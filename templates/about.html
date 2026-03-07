@@ -1,56 +1,51 @@
 {{define "content"}}
-<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+<section class="max-w-[720px] mx-auto px-6 py-16">
     <!-- Heading -->
-    <h1 class="text-4xl font-bold text-[#EDEDED] mb-12">About Me</h1>
+    <div class="mb-10 animate-up">
+        <h1 class="font-serif text-3xl font-medium" style="color: var(--text);">About</h1>
+    </div>
 
-    <!-- Photo + Bio -->
-    <div class="flex flex-col md:flex-row gap-10 mb-16">
-        <!-- Placeholder Photo -->
-        <div class="flex-shrink-0">
-            <div class="w-40 h-40 rounded-2xl bg-[#141414] border border-[#1F1F1F] flex items-center justify-center">
-                <span class="text-4xl font-bold text-[#5E6AD2]">SB</span>
-            </div>
-        </div>
-
-        <!-- Bio -->
+    <!-- Bio -->
+    <div class="mb-12 animate-up stagger-1">
         <div class="space-y-4">
-            <p class="text-[#EDEDED] leading-relaxed">
+            <p class="font-serif text-lg leading-relaxed mb-0" style="color: var(--text-secondary);">
                 I'm a software engineer with a deep focus on backend systems, distributed computing, and infrastructure. I love solving complex problems at scale and building the invisible plumbing that powers modern applications.
             </p>
-            <p class="text-[#8A8F98] leading-relaxed">
+            <p class="font-serif text-lg leading-relaxed mb-0" style="color: var(--text-secondary);">
                 My journey in software engineering started with a curiosity about how large-scale systems work under the hood. Over the years, I've developed expertise in designing resilient, high-throughput services and have contributed to systems that serve millions of users.
             </p>
-            <p class="text-[#8A8F98] leading-relaxed">
+            <p class="font-serif text-lg leading-relaxed mb-0" style="color: var(--text-secondary);">
                 I believe in writing clean, maintainable code and building systems that are easy to operate. I'm a strong advocate for observability, automation, and developer experience. When I'm not coding, I enjoy writing about technical topics and sharing knowledge with the community.
             </p>
         </div>
     </div>
 
     <!-- What I Do -->
-    <div class="mb-16">
-        <h2 class="text-2xl font-semibold text-[#EDEDED] mb-8">What I Do</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg">
-                <h3 class="text-lg font-semibold text-[#EDEDED] mb-2">Backend Engineering</h3>
-                <p class="text-sm text-[#8A8F98] leading-relaxed">
+    <div class="mb-12 animate-up stagger-2">
+        <hr class="divider mb-12">
+        <h2 class="font-serif text-xl font-medium mb-6" style="color: var(--text);">What I Do</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="card">
+                <h3 class="font-serif text-base font-medium mb-2" style="color: var(--text);">Backend Engineering</h3>
+                <p class="text-sm mb-0" style="color: var(--text-secondary);">
                     Designing and building high-performance APIs, microservices, and data pipelines using Go, Python, and modern cloud-native tooling.
                 </p>
             </div>
-            <div class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg">
-                <h3 class="text-lg font-semibold text-[#EDEDED] mb-2">Distributed Systems</h3>
-                <p class="text-sm text-[#8A8F98] leading-relaxed">
+            <div class="card">
+                <h3 class="font-serif text-base font-medium mb-2" style="color: var(--text);">Distributed Systems</h3>
+                <p class="text-sm mb-0" style="color: var(--text-secondary);">
                     Building fault-tolerant, scalable architectures with event-driven patterns, consensus protocols, and distributed data stores.
                 </p>
             </div>
-            <div class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg">
-                <h3 class="text-lg font-semibold text-[#EDEDED] mb-2">Infrastructure &amp; DevOps</h3>
-                <p class="text-sm text-[#8A8F98] leading-relaxed">
+            <div class="card">
+                <h3 class="font-serif text-base font-medium mb-2" style="color: var(--text);">Infrastructure &amp; DevOps</h3>
+                <p class="text-sm mb-0" style="color: var(--text-secondary);">
                     Automating deployments, managing Kubernetes clusters, building CI/CD pipelines, and ensuring reliable production environments.
                 </p>
             </div>
-            <div class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg">
-                <h3 class="text-lg font-semibold text-[#EDEDED] mb-2">Developer Tools</h3>
-                <p class="text-sm text-[#8A8F98] leading-relaxed">
+            <div class="card">
+                <h3 class="font-serif text-base font-medium mb-2" style="color: var(--text);">Developer Tools</h3>
+                <p class="text-sm mb-0" style="color: var(--text-secondary);">
                     Creating CLI tools, SDKs, and internal platforms that improve developer productivity and streamline engineering workflows.
                 </p>
             </div>
@@ -58,60 +53,59 @@
     </div>
 
     <!-- Tech Stack -->
-    <div class="mb-16">
-        <h2 class="text-2xl font-semibold text-[#EDEDED] mb-8">Tech Stack</h2>
+    <div class="mb-12 animate-up stagger-3">
+        <hr class="divider mb-12">
+        <h2 class="font-serif text-xl font-medium mb-6" style="color: var(--text);">Tech Stack</h2>
         <div class="space-y-6">
             <div>
-                <h3 class="text-sm font-medium text-[#8A8F98] uppercase tracking-wider mb-3">Languages</h3>
+                <p class="section-label mb-2">Languages</p>
                 <div class="flex flex-wrap gap-2">
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Go</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Python</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">TypeScript</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">SQL</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Bash</span>
+                    <span class="tag">Go</span>
+                    <span class="tag">Python</span>
+                    <span class="tag">TypeScript</span>
+                    <span class="tag">SQL</span>
+                    <span class="tag">Bash</span>
                 </div>
             </div>
             <div>
-                <h3 class="text-sm font-medium text-[#8A8F98] uppercase tracking-wider mb-3">Infrastructure</h3>
+                <p class="section-label mb-2">Infrastructure</p>
                 <div class="flex flex-wrap gap-2">
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Docker</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Kubernetes</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">AWS</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Terraform</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Linux</span>
+                    <span class="tag">Docker</span>
+                    <span class="tag">Kubernetes</span>
+                    <span class="tag">AWS</span>
+                    <span class="tag">Terraform</span>
+                    <span class="tag">Linux</span>
                 </div>
             </div>
             <div>
-                <h3 class="text-sm font-medium text-[#8A8F98] uppercase tracking-wider mb-3">Databases &amp; Messaging</h3>
+                <p class="section-label mb-2">Databases &amp; Messaging</p>
                 <div class="flex flex-wrap gap-2">
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">PostgreSQL</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Redis</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">Kafka</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">MongoDB</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">RabbitMQ</span>
+                    <span class="tag">PostgreSQL</span>
+                    <span class="tag">Redis</span>
+                    <span class="tag">Kafka</span>
+                    <span class="tag">MongoDB</span>
+                    <span class="tag">RabbitMQ</span>
                 </div>
             </div>
             <div>
-                <h3 class="text-sm font-medium text-[#8A8F98] uppercase tracking-wider mb-3">Protocols &amp; APIs</h3>
+                <p class="section-label mb-2">Protocols &amp; APIs</p>
                 <div class="flex flex-wrap gap-2">
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">gRPC</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">GraphQL</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">REST</span>
-                    <span class="px-3 py-1.5 text-sm text-[#EDEDED] bg-[#141414] border border-[#1F1F1F] rounded-full">WebSocket</span>
+                    <span class="tag">gRPC</span>
+                    <span class="tag">GraphQL</span>
+                    <span class="tag">REST</span>
+                    <span class="tag">WebSocket</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Contact CTA -->
-    <div class="p-8 bg-[#141414] border border-[#1F1F1F] rounded-lg text-center">
-        <p class="text-[#8A8F98] mb-4">Interested in working together or just want to say hi?</p>
-        <a href="/contact" class="inline-flex items-center px-6 py-3 bg-[#5E6AD2] text-white text-sm font-medium rounded-lg hover:bg-[#6E7AE2] transition-colors duration-200">
-            Get in Touch
-            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-            </svg>
-        </a>
+    <!-- CTA -->
+    <div class="animate-up stagger-4">
+        <hr class="divider mb-12">
+        <div class="text-center py-4">
+            <p class="text-sm mb-4" style="color: var(--text-secondary);">Interested in working together or just want to say hi?</p>
+            <a href="/contact" class="btn btn--primary">Get in Touch</a>
+        </div>
     </div>
 </section>
 {{end}}

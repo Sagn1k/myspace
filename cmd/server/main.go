@@ -70,7 +70,9 @@ func main() {
 		Format: "${time} ${status} ${method} ${path} ${latency}\n",
 	}))
 	app.Use(compress.New())
-	app.Use(helmet.New())
+	app.Use(helmet.New(helmet.Config{
+		CrossOriginEmbedderPolicy: "unsafe-none",
+	}))
 	app.Use(limiter.New(limiter.Config{
 		Max: 100,
 	}))

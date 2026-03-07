@@ -1,35 +1,35 @@
 {{define "content"}}
-<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-    <!-- Back Link + Heading -->
-    <div class="mb-10">
-        <a href="/tags" class="inline-flex items-center gap-1 text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200 mb-4">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<section class="max-w-[720px] mx-auto px-6 py-16">
+    <div class="mb-8 animate-up">
+        <a href="/tags" class="inline-flex items-center gap-1 text-sm mb-4 block" style="color: var(--text-dim);">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
             All tags
         </a>
-        <h1 class="text-4xl font-bold text-[#EDEDED]">
-            Posts tagged: <span class="text-[#5E6AD2]">{{.Tag}}</span>
+        <h1 class="font-serif text-3xl font-medium" style="color: var(--text);">
+            Posts tagged <em style="color: var(--accent);">{{.Tag}}</em>
         </h1>
-        <p class="text-[#8A8F98] mt-2">{{len .Blogs}} posts</p>
+        <p class="text-sm mt-1 mb-0" style="color: var(--text-dim);">{{len .Blogs}} posts</p>
     </div>
 
-    <!-- Blog Post Cards -->
-    <div class="space-y-4">
+    <div class="animate-up stagger-1">
         {{range .Blogs}}
-        <article class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] transition-colors duration-200">
+        <article class="post-item">
             <a href="/blog/{{.Slug}}" class="block group">
-                <h2 class="text-xl font-semibold text-[#EDEDED] mb-2 group-hover:text-[#5E6AD2] transition-colors duration-200">{{.Title}}</h2>
-                <div class="flex items-center gap-3 text-sm text-[#8A8F98] mb-3">
-                    <time>{{.Date.Format "Jan 2, 2006"}}</time>
-                    <span class="opacity-40">&middot;</span>
-                    <span>{{.ReadingTime}} min read</span>
+                <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 mb-1">
+                    <h2 class="post-item__title group-hover:underline">{{.Title}}</h2>
+                    <div class="post-item__meta flex-shrink-0">
+                        <time>{{.Date.Format "Jan 2, 2006"}}</time>
+                        <span class="mx-1">&middot;</span>
+                        <span>{{.ReadingTime}} min</span>
+                    </div>
                 </div>
-                <p class="text-sm text-[#8A8F98] leading-relaxed">{{.Description}}</p>
+                <p class="post-item__desc mb-0">{{.Description}}</p>
             </a>
-            <div class="flex flex-wrap gap-2 mt-3">
+            <div class="flex flex-wrap gap-1.5 mt-2">
                 {{range .Tags}}
-                <a href="/tags/{{.}}" class="px-2 py-1 text-xs font-medium text-[#8A8F98] bg-[#0A0A0A] border border-[#1F1F1F] rounded hover:border-[#5E6AD2] hover:text-[#EDEDED] transition-colors duration-200">{{.}}</a>
+                <a href="/tags/{{.}}" class="tag">{{.}}</a>
                 {{end}}
             </div>
         </article>
