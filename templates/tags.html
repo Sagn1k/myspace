@@ -1,0 +1,16 @@
+{{define "content"}}
+<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <!-- Heading -->
+    <h1 class="text-4xl font-bold text-[#EDEDED] mb-10">Tags</h1>
+
+    <!-- Tags Cloud -->
+    <div class="flex flex-wrap gap-3">
+        {{range .Tags}}
+        <a href="/tags/{{.Name}}" class="inline-flex items-center gap-2 px-5 py-2.5 text-base text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#5E6AD2] hover:text-[#EDEDED] transition-colors duration-200">
+            <span>{{.Name}}</span>
+            <span class="text-xs opacity-50 bg-[#0A0A0A] px-2 py-0.5 rounded-full">{{.Count}}</span>
+        </a>
+        {{end}}
+    </div>
+</section>
+{{end}}

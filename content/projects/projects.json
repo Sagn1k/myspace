@@ -1,0 +1,47 @@
+[
+  {
+    "id": "taskforge",
+    "title": "TaskForge",
+    "description": "A distributed task queue built in Go with support for delayed jobs, retries, and dead-letter queues. Uses Redis for broker and SQLite for persistence.",
+    "tech_stack": ["Go", "Redis", "SQLite", "gRPC", "Docker"],
+    "github_link": "https://github.com/sagnikb/taskforge",
+    "demo_link": "",
+    "featured": true
+  },
+  {
+    "id": "livechat",
+    "title": "LiveChat",
+    "description": "Real-time chat application with WebSocket support, room management, message persistence, and end-to-end encryption.",
+    "tech_stack": ["Go", "WebSocket", "PostgreSQL", "React", "TailwindCSS"],
+    "github_link": "https://github.com/sagnikb/livechat",
+    "demo_link": "https://livechat-demo.sagnikbhowmick.com",
+    "featured": true
+  },
+  {
+    "id": "kctl",
+    "title": "kctl",
+    "description": "A developer-friendly CLI tool for managing Kubernetes clusters. Simplifies common operations like log tailing, port forwarding, and resource inspection.",
+    "tech_stack": ["Go", "Kubernetes", "Cobra", "client-go"],
+    "github_link": "https://github.com/sagnikb/kctl",
+    "demo_link": "",
+    "featured": true
+  },
+  {
+    "id": "pgmigrate",
+    "title": "pgmigrate",
+    "description": "Zero-dependency PostgreSQL migration tool written in Go. Supports up/down migrations, dry-run mode, and version locking.",
+    "tech_stack": ["Go", "PostgreSQL"],
+    "github_link": "https://github.com/sagnikb/pgmigrate",
+    "demo_link": "",
+    "featured": false
+  },
+  {
+    "id": "dotfiles",
+    "title": "dotfiles",
+    "description": "Personal development environment configuration. Includes Neovim, tmux, zsh, and automated setup scripts for new machines.",
+    "tech_stack": ["Shell", "Lua", "Neovim", "tmux"],
+    "github_link": "https://github.com/sagnikb/dotfiles",
+    "demo_link": "",
+    "featured": false
+  }
+]

@@ -1,0 +1,56 @@
+{{define "content"}}
+<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <!-- Heading -->
+    <h1 class="text-4xl font-bold text-[#EDEDED] mb-8">Search</h1>
+
+    <!-- Search Form -->
+    <form action="/search" method="GET" class="mb-10">
+        <div class="relative">
+            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8A8F98]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" name="q" value="{{.Query}}"
+                placeholder="Search posts by title, tag, or keyword..."
+                class="w-full pl-12 pr-4 py-3 bg-[#141414] border border-[#1F1F1F] rounded-lg text-[#EDEDED] placeholder:text-[#8A8F98] focus:outline-none focus:border-[#5E6AD2] transition-colors duration-200"
+                autofocus>
+        </div>
+    </form>
+
+    <!-- Results -->
+    {{if .Query}}
+        {{if .Results}}
+        <p class="text-sm text-[#8A8F98] mb-6">{{len .Results}} results for "{{.Query}}"</p>
+        <div class="space-y-4">
+            {{range .Results}}
+            <a href="/blog/{{.Slug}}" class="block p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] transition-colors duration-200 group">
+                <h2 class="text-lg font-semibold text-[#EDEDED] mb-2 group-hover:text-[#5E6AD2] transition-colors duration-200">{{.Title}}</h2>
+                <p class="text-sm text-[#8A8F98] mb-3 leading-relaxed">{{.Description}}</p>
+                {{if .Tags}}
+                <div class="flex flex-wrap gap-2">
+                    {{range .Tags}}
+                    <span class="px-2 py-1 text-xs font-medium text-[#8A8F98] bg-[#0A0A0A] border border-[#1F1F1F] rounded">{{.}}</span>
+                    {{end}}
+                </div>
+                {{end}}
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="text-center py-20">
+            <svg class="w-12 h-12 text-[#1F1F1F] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <p class="text-lg text-[#8A8F98]">No results found for "{{.Query}}"</p>
+            <p class="text-sm text-[#8A8F98] mt-2 opacity-60">Try a different search term</p>
+        </div>
+        {{end}}
+    {{else}}
+    <div class="text-center py-20">
+        <svg class="w-12 h-12 text-[#1F1F1F] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <p class="text-lg text-[#8A8F98]">Enter a search term to find posts</p>
+    </div>
+    {{end}}
+</section>
+{{end}}

@@ -1,0 +1,97 @@
+{{define "content"}}
+<article data-has-progress-bar="true">
+    <!-- Article Header -->
+    <header class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-10">
+        <h1 class="text-4xl md:text-5xl font-bold text-[#EDEDED] leading-tight mb-4">{{.Post.Title}}</h1>
+        <div class="flex items-center gap-3 text-sm text-[#8A8F98] mb-4">
+            <time>{{.Post.Date.Format "January 2, 2006"}}</time>
+            <span class="opacity-40">&middot;</span>
+            <span>{{.Post.ReadingTime}} min read</span>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-6">
+            {{range .Post.Tags}}
+            <a href="/tags/{{.}}" class="px-2 py-1 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded hover:border-[#5E6AD2] hover:text-[#EDEDED] transition-colors duration-200">{{.}}</a>
+            {{end}}
+        </div>
+        {{if .Post.Description}}
+        <p class="text-lg text-[#8A8F98] border-l-2 border-[#5E6AD2] pl-4">{{.Post.Description}}</p>
+        {{end}}
+
+        <!-- Download Buttons -->
+        <div class="flex gap-3 mt-6">
+            <a href="/blog/{{.Post.Slug}}/download/pdf" class="inline-flex items-center gap-2 px-4 py-2 text-sm text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] hover:text-[#EDEDED] transition-colors duration-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                PDF
+            </a>
+            <a href="/blog/{{.Post.Slug}}/download/epub" class="inline-flex items-center gap-2 px-4 py-2 text-sm text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] hover:text-[#EDEDED] transition-colors duration-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+                EPUB
+            </a>
+        </div>
+    </header>
+
+    <!-- Two Column Layout: TOC + Content -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div class="flex gap-12">
+            <!-- TOC Sidebar -->
+            {{if .Post.TOC}}
+            <aside class="hidden lg:block w-64 flex-shrink-0">
+                <nav class="sticky top-24">
+                    <h3 class="text-sm font-semibold text-[#8A8F98] uppercase tracking-wider mb-4">On this page</h3>
+                    <ul class="space-y-2 text-sm border-l border-[#1F1F1F]">
+                        {{range .Post.TOC}}
+                        <li class="{{if eq .Level 2}}pl-4{{else if eq .Level 3}}pl-8{{else}}pl-4{{end}}">
+                            <a href="#{{.ID}}" class="block py-1 text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200 toc-link">{{.Title}}</a>
+                        </li>
+                        {{end}}
+                    </ul>
+                </nav>
+            </aside>
+            {{end}}
+
+            <!-- Article Content -->
+            <div class="flex-1 max-w-3xl prose-content">
+                {{html .Post.HTMLContent}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Posts -->
+    {{if .RelatedPosts}}
+    <section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div class="pt-12 border-t border-[#1F1F1F]">
+            <h2 class="text-2xl font-semibold text-[#EDEDED] mb-6">Related Posts</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{range .RelatedPosts}}
+                <a href="/blog/{{.Slug}}" class="block p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] transition-colors duration-200 group">
+                    <h3 class="text-lg font-semibold text-[#EDEDED] mb-2 group-hover:text-[#5E6AD2] transition-colors duration-200">{{.Title}}</h3>
+                    <p class="text-sm text-[#8A8F98] leading-relaxed">{{.Description}}</p>
+                </a>
+                {{end}}
+            </div>
+        </div>
+    </section>
+    {{end}}
+</article>
+
+<script>
+    // Enable reading progress bar for blog posts
+    (function() {
+        var bar = document.getElementById('reading-progress');
+        if (bar) {
+            bar.classList.remove('hidden');
+        }
+        window.addEventListener('scroll', function() {
+            if (!bar) return;
+            var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            if (docHeight <= 0) return;
+            var scrolled = (window.scrollY / docHeight) * 100;
+            bar.style.width = Math.min(scrolled, 100) + '%';
+        });
+    })();
+</script>
+{{end}}

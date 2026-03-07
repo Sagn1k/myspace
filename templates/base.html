@@ -1,0 +1,175 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} | {{end}}{{.Config.Title}}</title>
+    <meta name="description" content="{{if .Title}}{{.Title}}{{else}}{{.Config.Description}}{{end}}">
+    <meta name="author" content="{{.Config.Author}}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{if .Title}}{{.Title}} | {{end}}{{.Config.Title}}">
+    <meta property="og:description" content="{{.Config.Description}}">
+    <meta property="og:url" content="{{.Config.BaseURL}}{{.CurrentPath}}">
+    <meta property="og:site_name" content="{{.Config.Title}}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{if .Title}}{{.Title}} | {{end}}{{.Config.Title}}">
+    <meta name="twitter:description" content="{{.Config.Description}}">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="{{.Config.BaseURL}}{{.CurrentPath}}">
+
+    <!-- RSS -->
+    <link rel="alternate" type="application/rss+xml" title="{{.Config.Title}}" href="/rss.xml">
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-[#0A0A0A] text-[#EDEDED] font-sans min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Reading Progress Bar -->
+    <div id="reading-progress" class="fixed top-0 left-0 h-[2px] bg-[#5E6AD2] z-[100] transition-all duration-150 hidden" style="width: 0%;"></div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-[#0A0A0A]/80 backdrop-blur-lg border-b border-[#1F1F1F]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="/" class="text-xl font-bold text-[#EDEDED] hover:text-[#5E6AD2] transition-colors duration-200">
+                    SB
+                </a>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="/" class="text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                        Home
+                    </a>
+                    <a href="/projects" class="text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/projects"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                        Projects
+                    </a>
+                    <a href="/blog" class="text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/blog"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                        Blog
+                    </a>
+                    <a href="/tags" class="text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/tags"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                        Tags
+                    </a>
+                    <a href="/about" class="text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/about"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                        About
+                    </a>
+                    <a href="/contact" class="text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/contact"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                        Contact
+                    </a>
+
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg text-[#8A8F98] hover:text-[#EDEDED] hover:bg-[#141414] transition-colors duration-200" aria-label="Toggle theme">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg id="theme-icon-sun" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <!-- Moon icon (shown in light mode) -->
+                        <svg id="theme-icon-moon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Mobile Hamburger -->
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-[#8A8F98] hover:text-[#EDEDED] hover:bg-[#141414] transition-colors duration-200" aria-label="Toggle menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"/>
+                        <path id="close-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-[#1F1F1F]">
+            <div class="px-4 py-4 space-y-3">
+                <a href="/" class="block text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                    Home
+                </a>
+                <a href="/projects" class="block text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/projects"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                    Projects
+                </a>
+                <a href="/blog" class="block text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/blog"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                    Blog
+                </a>
+                <a href="/tags" class="block text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/tags"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                    Tags
+                </a>
+                <a href="/about" class="block text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/about"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                    About
+                </a>
+                <a href="/contact" class="block text-sm font-medium transition-colors duration-200 {{if eq .CurrentPath "/contact"}}text-[#EDEDED]{{else}}text-[#8A8F98] hover:text-[#EDEDED]{{end}}">
+                    Contact
+                </a>
+                <div class="pt-2 border-t border-[#1F1F1F]">
+                    <button id="theme-toggle-mobile" class="flex items-center space-x-2 text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <span>Toggle Theme</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-1">
+        {{template "content" .}}
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-[#1F1F1F] mt-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                <div class="flex items-center space-x-6">
+                    <a href="/" class="text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200">Home</a>
+                    <a href="/blog" class="text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200">Blog</a>
+                    <a href="/projects" class="text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200">Projects</a>
+                    <a href="/about" class="text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200">About</a>
+                    <a href="/rss.xml" class="text-sm text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200" title="RSS Feed">
+                        <svg class="w-4 h-4 inline-block mr-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6.18 15.64a2.18 2.18 0 012.18 2.18C8.36 19 7.38 20 6.18 20 5 20 4 19 4 17.82a2.18 2.18 0 012.18-2.18M4 4.44A15.56 15.56 0 0119.56 20h-2.83A12.73 12.73 0 004 7.27V4.44m0 5.66a9.9 9.9 0 019.9 9.9h-2.83A7.07 7.07 0 004 12.93V10.1z"/>
+                        </svg>
+                        RSS
+                    </a>
+                </div>
+                <p class="text-sm text-[#8A8F98]">
+                    &copy; {{.Config.Author}}. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom JS -->
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+{{end}}

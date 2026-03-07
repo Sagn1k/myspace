@@ -1,0 +1,144 @@
+{{define "content"}}
+<!-- Hero Section -->
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+    <div class="max-w-3xl">
+        <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-[#EDEDED] mb-6">
+            Hi, I'm Sagnik
+        </h1>
+        <p class="text-xl sm:text-2xl text-[#8A8F98] font-light mb-6">
+            Software Engineer crafting systems that scale.
+        </p>
+        <p class="text-base text-[#8A8F98] leading-relaxed mb-10 max-w-2xl">
+            I build robust backend systems and distributed architectures. Passionate about Go, cloud-native infrastructure, and developer tooling that makes engineering teams more productive.
+        </p>
+        <div class="flex flex-wrap gap-4">
+            <a href="/projects" class="inline-flex items-center px-6 py-3 bg-[#5E6AD2] text-white text-sm font-medium rounded-lg hover:bg-[#6E7AE2] transition-colors duration-200">
+                View Projects
+                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
+            </a>
+            <a href="/blog" class="inline-flex items-center px-6 py-3 bg-[#141414] text-[#EDEDED] text-sm font-medium rounded-lg border border-[#1F1F1F] hover:border-[#333] transition-colors duration-200">
+                Read Blog
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- About Summary Section -->
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex flex-col md:flex-row items-start gap-8">
+        <!-- Avatar Placeholder -->
+        <div class="flex-shrink-0 w-24 h-24 rounded-full bg-[#141414] border border-[#1F1F1F] flex items-center justify-center">
+            <span class="text-2xl font-bold text-[#5E6AD2]">SB</span>
+        </div>
+        <div class="max-w-2xl">
+            <h2 class="text-2xl font-semibold text-[#EDEDED] mb-4">About Me</h2>
+            <p class="text-[#8A8F98] leading-relaxed">
+                I'm a backend engineer passionate about distributed systems, Go, and developer tools. I enjoy building high-performance services that handle millions of requests, designing clean APIs, and contributing to open-source projects. When I'm not writing code, you'll find me exploring new technologies and sharing what I learn through my blog.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Skills Section -->
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <h2 class="text-2xl font-semibold text-[#EDEDED] mb-8">Skills</h2>
+    <div class="flex flex-wrap gap-3">
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">Go</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">Python</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">Docker</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">Kubernetes</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">PostgreSQL</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">Redis</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">gRPC</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">GraphQL</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">AWS</span>
+        <span class="px-4 py-2 text-sm font-medium text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full transition-colors duration-200 hover:border-[#5E6AD2] hover:text-[#EDEDED]">Linux</span>
+    </div>
+</section>
+
+<!-- Featured Projects Section -->
+{{if .FeaturedProjects}}
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-semibold text-[#EDEDED]">Featured Projects</h2>
+        <a href="/projects" class="text-sm text-[#5E6AD2] hover:text-[#6E7AE2] transition-colors duration-200">
+            View all &rarr;
+        </a>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {{range .FeaturedProjects}}
+        <div class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] transition-colors duration-200">
+            <h3 class="text-lg font-semibold text-[#EDEDED] mb-2">{{.Title}}</h3>
+            <p class="text-sm text-[#8A8F98] mb-4 leading-relaxed">{{.Description}}</p>
+            <div class="flex flex-wrap gap-2 mb-4">
+                {{range .TechStack}}
+                <span class="px-2 py-1 text-xs font-medium text-[#8A8F98] bg-[#0A0A0A] border border-[#1F1F1F] rounded">{{.}}</span>
+                {{end}}
+            </div>
+            <div class="flex items-center gap-4">
+                {{if .GithubLink}}
+                <a href="{{.GithubLink}}" target="_blank" rel="noopener noreferrer" class="text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200" title="GitHub">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                </a>
+                {{end}}
+                {{if .DemoLink}}
+                <a href="{{.DemoLink}}" target="_blank" rel="noopener noreferrer" class="text-[#8A8F98] hover:text-[#EDEDED] transition-colors duration-200" title="Live Demo">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+</section>
+{{end}}
+
+<!-- Latest Blog Posts Section -->
+{{if .LatestBlogs}}
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex items-center justify-between mb-8">
+        <h2 class="text-2xl font-semibold text-[#EDEDED]">Latest Posts</h2>
+        <a href="/blog" class="text-sm text-[#5E6AD2] hover:text-[#6E7AE2] transition-colors duration-200">
+            View all &rarr;
+        </a>
+    </div>
+    <div class="space-y-4">
+        {{range .LatestBlogs}}
+        <a href="/blog/{{.Slug}}" class="block p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] transition-colors duration-200 group">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                <h3 class="text-lg font-semibold text-[#EDEDED] group-hover:text-[#5E6AD2] transition-colors duration-200">{{.Title}}</h3>
+                <div class="flex items-center gap-3 text-xs text-[#8A8F98] mt-1 sm:mt-0">
+                    <time>{{.Date.Format "Jan 2, 2006"}}</time>
+                    <span>&middot;</span>
+                    <span>{{.ReadingTime}} min read</span>
+                </div>
+            </div>
+            <p class="text-sm text-[#8A8F98] mb-3 leading-relaxed">{{.Description}}</p>
+            <div class="flex flex-wrap gap-2">
+                {{range .Tags}}
+                <span class="px-2 py-1 text-xs font-medium text-[#8A8F98] bg-[#0A0A0A] border border-[#1F1F1F] rounded">{{.}}</span>
+                {{end}}
+            </div>
+        </a>
+        {{end}}
+    </div>
+</section>
+{{end}}
+
+<!-- RSS Section -->
+<section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex items-center gap-3 text-[#8A8F98]">
+        <svg class="w-5 h-5 text-[#5E6AD2]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M6.18 15.64a2.18 2.18 0 012.18 2.18C8.36 19 7.38 20 6.18 20 5 20 4 19 4 17.82a2.18 2.18 0 012.18-2.18M4 4.44A15.56 15.56 0 0119.56 20h-2.83A12.73 12.73 0 004 7.27V4.44m0 5.66a9.9 9.9 0 019.9 9.9h-2.83A7.07 7.07 0 004 12.93V10.1z"/>
+        </svg>
+        <span class="text-sm">Subscribe via</span>
+        <a href="/rss.xml" class="text-sm text-[#5E6AD2] hover:text-[#6E7AE2] transition-colors duration-200 underline underline-offset-2">RSS</a>
+    </div>
+</section>
+{{end}}

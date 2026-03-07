@@ -1,0 +1,43 @@
+{{define "content"}}
+<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <!-- Heading -->
+    <div class="mb-10">
+        <h1 class="text-4xl font-bold text-[#EDEDED] mb-2">Blog</h1>
+        <p class="text-[#8A8F98]">{{len .Blogs}} posts published</p>
+    </div>
+
+    <!-- Tag Filter Bar -->
+    {{if .Tags}}
+    <div class="flex flex-wrap gap-2 mb-10">
+        {{range .Tags}}
+        <a href="/tags/{{.Name}}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A8F98] bg-[#141414] border border-[#1F1F1F] rounded-full hover:border-[#5E6AD2] hover:text-[#EDEDED] transition-colors duration-200">
+            {{.Name}}
+            <span class="text-xs opacity-50">{{.Count}}</span>
+        </a>
+        {{end}}
+    </div>
+    {{end}}
+
+    <!-- Blog Post List -->
+    <div class="space-y-4">
+        {{range .Blogs}}
+        <article class="p-6 bg-[#141414] border border-[#1F1F1F] rounded-lg hover:border-[#333] transition-colors duration-200">
+            <a href="/blog/{{.Slug}}" class="block group">
+                <h2 class="text-xl font-semibold text-[#EDEDED] mb-2 group-hover:text-[#5E6AD2] transition-colors duration-200">{{.Title}}</h2>
+                <div class="flex items-center gap-3 text-sm text-[#8A8F98] mb-3">
+                    <time>{{.Date.Format "Jan 2, 2006"}}</time>
+                    <span class="opacity-40">&middot;</span>
+                    <span>{{.ReadingTime}} min read</span>
+                </div>
+                <p class="text-sm text-[#8A8F98] mb-4 leading-relaxed">{{.Description}}</p>
+            </a>
+            <div class="flex flex-wrap gap-2">
+                {{range .Tags}}
+                <a href="/tags/{{.}}" class="px-2 py-1 text-xs font-medium text-[#8A8F98] bg-[#0A0A0A] border border-[#1F1F1F] rounded hover:border-[#5E6AD2] hover:text-[#EDEDED] transition-colors duration-200">{{.}}</a>
+                {{end}}
+            </div>
+        </article>
+        {{end}}
+    </div>
+</section>
+{{end}}
