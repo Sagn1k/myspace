@@ -3,7 +3,7 @@
     <!-- Article Header -->
     <header class="max-w-[720px] mx-auto px-6 pt-16 pb-8 animate-up">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm mb-6" style="color: var(--text-dim);">
-            <time>{{.Post.Date.Format "January 2, 2006"}}</time>
+            <time datetime="{{.Post.Date.Format "2006-01-02"}}">{{.Post.Date.Format "January 2, 2006"}}</time>
             <span>&middot;</span>
             <span>{{.Post.ReadingTime}} min read</span>
             {{if .Post.Tags}}

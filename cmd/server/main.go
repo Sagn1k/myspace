@@ -96,6 +96,7 @@ func main() {
 	app.Get("/contact", h.Contact)
 	app.Get("/rss.xml", h.RSS)
 	app.Get("/sitemap.xml", h.Sitemap)
+	app.Get("/robots.txt", h.Robots)
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)

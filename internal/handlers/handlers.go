@@ -89,6 +89,17 @@ func (h *Handler) LoadProjects(path string) error {
 	return json.Unmarshal(data, &h.projects)
 }
 
+func (h *Handler) Robots(c *fiber.Ctx) error {
+	var b strings.Builder
+	b.WriteString("User-agent: *\n")
+	b.WriteString("Allow: /\n")
+	b.WriteString("Disallow: /search\n")
+	b.WriteString("Disallow: /blog/*/download/\n\n")
+	fmt.Fprintf(&b, "Sitemap: %s/sitemap.xml\n", h.config.BaseURL)
+	c.Set("Content-Type", "text/plain; charset=utf-8")
+	return c.SendString(b.String())
+}
+
 func (h *Handler) render(c *fiber.Ctx, name string, data fiber.Map) error {
 	if data == nil {
 		data = fiber.Map{}
@@ -114,31 +125,53 @@ func (h *Handler) render(c *fiber.Ctx, name string, data fiber.Map) error {
 
 func (h *Handler) Home(c *fiber.Ctx) error {
 	featured := h.getFeaturedProjects()
+	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"WebSite","name":%q,"url":%q,"description":%q,"author":{"@type":"Person","name":%q},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"%s/search?q={search_term_string}"},"query-input":"required name=search_term_string"}}`,
+		h.config.Title, h.config.BaseURL, h.config.Description, h.config.Author, h.config.BaseURL)
 	return h.render(c, "home", fiber.Map{
-		"Title":        "Home",
-		"LatestBlogs":  h.engine.GetLatestBlogs(3),
+		"Title":            "Home",
+		"Description":      h.config.Description,
+		"LatestBlogs":      h.engine.GetLatestBlogs(3),
 		"FeaturedProjects": featured,
+		"Schema":           schema,
 	})
 }
 
 func (h *Handler) About(c *fiber.Ctx) error {
+	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"Person","name":%q,"url":%q,"jobTitle":"Software Engineer","description":"Backend engineer building distributed systems and developer tools in Go."}`,
+		h.config.Author, h.config.BaseURL)
 	return h.render(c, "about", fiber.Map{
-		"Title": "About",
+		"Title":       "About",
+		"Description": fmt.Sprintf("About %s — software engineer building backend systems and developer tools in Go.", h.config.Author),
+		"Schema":      schema,
 	})
 }
 
 func (h *Handler) Projects(c *fiber.Ctx) error {
 	return h.render(c, "projects", fiber.Map{
-		"Title":    "Projects",
-		"Projects": h.projects,
+		"Title":       "Projects",
+		"Description": fmt.Sprintf("Open source projects and tools built by %s.", h.config.Author),
+		"Projects":    h.projects,
 	})
 }
 
 func (h *Handler) BlogList(c *fiber.Ctx) error {
+	blogs := h.engine.GetAllBlogs()
+	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"Blog","name":%q,"url":"%s/blog","description":"Articles on software development, Go, distributed systems, and developer tools.","author":{"@type":"Person","name":%q},"blogPost":[`,
+		h.config.Title+" Blog", h.config.BaseURL, h.config.Author)
+	for i, b := range blogs {
+		if i > 0 {
+			schema += ","
+		}
+		schema += fmt.Sprintf(`{"@type":"BlogPosting","headline":%q,"url":"%s/blog/%s","datePublished":"%s","description":%q}`,
+			b.Title, h.config.BaseURL, b.Slug, b.Date.Format("2006-01-02"), b.Description)
+	}
+	schema += `]}`
 	return h.render(c, "blog_list", fiber.Map{
-		"Title": "Blog",
-		"Blogs": h.engine.GetAllBlogs(),
-		"Tags":  h.engine.GetAllTags(),
+		"Title":       "Blog",
+		"Description": "Articles on software development, Go, distributed systems, and developer tools.",
+		"Blogs":       blogs,
+		"Tags":        h.engine.GetAllTags(),
+		"Schema":      schema,
 	})
 }
 
@@ -151,10 +184,26 @@ func (h *Handler) BlogPost(c *fiber.Ctx) error {
 
 	related := h.engine.GetRelatedBlogs(slug, 3)
 
+	tagsJSON := "[]"
+	if len(post.Tags) > 0 {
+		tagsJSON = `["` + strings.Join(post.Tags, `","`) + `"]`
+	}
+
+	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"BlogPosting","headline":%q,"description":%q,"datePublished":"%s","author":{"@type":"Person","name":%q,"url":%q},"publisher":{"@type":"Person","name":%q},"mainEntityOfPage":{"@type":"WebPage","@id":"%s/blog/%s"},"keywords":%s,"wordCount":%d,"timeRequired":"PT%dM"}`,
+		post.Title, post.Description, post.Date.Format("2006-01-02T15:04:05Z07:00"),
+		h.config.Author, h.config.BaseURL, h.config.Author,
+		h.config.BaseURL, post.Slug, tagsJSON,
+		len(strings.Fields(post.Content)), post.ReadingTime)
+
+	breadcrumb := fmt.Sprintf(`{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"%s"},{"@type":"ListItem","position":2,"name":"Blog","item":"%s/blog"},{"@type":"ListItem","position":3,"name":%q,"item":"%s/blog/%s"}]}`,
+		h.config.BaseURL, h.config.BaseURL, post.Title, h.config.BaseURL, post.Slug)
+
 	return h.render(c, "blog_post", fiber.Map{
 		"Title":        post.Title,
+		"Description":  post.Description,
 		"Post":         post,
 		"RelatedPosts": related,
+		"Schema":       schema + `</script><script type="application/ld+json">` + breadcrumb,
 	})
 }
 
@@ -216,22 +265,36 @@ func (h *Handler) Sitemap(c *fiber.Ctx) error {
 	tags := h.engine.GetAllTags()
 
 	var b strings.Builder
-	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`)
-	b.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`)
+	b.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	b.WriteString("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n")
 
-	pages := []string{"/", "/about", "/projects", "/blog", "/tags", "/contact"}
-	for _, p := range pages {
-		fmt.Fprintf(&b, `<url><loc>%s%s</loc></url>`, h.config.BaseURL, p)
+	type sitemapEntry struct {
+		loc        string
+		changefreq string
+		priority   string
+	}
+	staticPages := []sitemapEntry{
+		{"/", "weekly", "1.0"},
+		{"/blog", "daily", "0.9"},
+		{"/projects", "monthly", "0.8"},
+		{"/about", "monthly", "0.7"},
+		{"/tags", "weekly", "0.6"},
+		{"/contact", "yearly", "0.5"},
+	}
+	for _, p := range staticPages {
+		fmt.Fprintf(&b, "<url><loc>%s%s</loc><changefreq>%s</changefreq><priority>%s</priority></url>\n",
+			h.config.BaseURL, p.loc, p.changefreq, p.priority)
 	}
 	for _, blog := range blogs {
-		fmt.Fprintf(&b, `<url><loc>%s/blog/%s</loc><lastmod>%s</lastmod></url>`,
+		fmt.Fprintf(&b, "<url><loc>%s/blog/%s</loc><lastmod>%s</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>\n",
 			h.config.BaseURL, blog.Slug, blog.Date.Format("2006-01-02"))
 	}
 	for _, tag := range tags {
-		fmt.Fprintf(&b, `<url><loc>%s/tags/%s</loc></url>`, h.config.BaseURL, tag.Name)
+		fmt.Fprintf(&b, "<url><loc>%s/tags/%s</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>\n",
+			h.config.BaseURL, tag.Name)
 	}
 
-	b.WriteString(`</urlset>`)
+	b.WriteString("</urlset>")
 	c.Set("Content-Type", "application/xml; charset=utf-8")
 	return c.SendString(b.String())
 }
