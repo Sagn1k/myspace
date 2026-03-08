@@ -30,8 +30,8 @@
     <link rel="canonical" href="{{.Config.BaseURL}}{{.CurrentPath}}">
     <link rel="alternate" type="application/rss+xml" title="{{.Config.Title}}" href="/rss.xml">
 
-    {{if .Schema}}
-    <script type="application/ld+json">{{html .Schema}}</script>
+    {{if .SchemaJSON}}
+    {{html .SchemaJSON}}
     {{end}}
 
     <link rel="preconnect" href="https://fonts.googleapis.com">

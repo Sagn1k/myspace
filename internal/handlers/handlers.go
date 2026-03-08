@@ -107,6 +107,12 @@ func (h *Handler) render(c *fiber.Ctx, name string, data fiber.Map) error {
 	data["Config"] = h.config
 	data["CurrentPath"] = c.Path()
 
+	// Convert Schema strings to template.HTML wrapped in script tags
+	if schema, ok := data["Schema"].(string); ok && schema != "" {
+		data["SchemaJSON"] = template.HTML(`<script type="application/ld+json">` + schema + `</script>`)
+		delete(data, "Schema")
+	}
+
 	tmpl, ok := h.tmpls[name]
 	if !ok {
 		return c.Status(500).SendString("Unknown template: " + name)
@@ -203,7 +209,7 @@ func (h *Handler) BlogPost(c *fiber.Ctx) error {
 		"Description":  post.Description,
 		"Post":         post,
 		"RelatedPosts": related,
-		"Schema":       schema + `</script><script type="application/ld+json">` + breadcrumb,
+		"SchemaJSON":   template.HTML(`<script type="application/ld+json">` + schema + `</script><script type="application/ld+json">` + breadcrumb + `</script>`),
 	})
 }
 
