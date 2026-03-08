@@ -40,6 +40,20 @@ func (h *Handler) LoadTemplates(dir string) error {
 		"html":     func(s string) template.HTML { return template.HTML(s) },
 		"truncate": truncate,
 		"add":      func(a, b int) int { return a + b },
+		"split": func(s, sep string) []string {
+			if s == "" {
+				return nil
+			}
+			parts := strings.Split(s, sep)
+			var result []string
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					result = append(result, p)
+				}
+			}
+			return result
+		},
 		"seq": func(n int) []int {
 			s := make([]int, n)
 			for i := range s {

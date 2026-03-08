@@ -2,6 +2,8 @@ package database
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/sagnikb/myspace/internal/models"
@@ -13,6 +15,9 @@ type DB struct {
 }
 
 func New(path string) (*DB, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, err
+	}
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err

@@ -56,7 +56,7 @@ type SiteConfig struct {
 func DefaultConfig() SiteConfig {
 	return SiteConfig{
 		Title:       "Sagnik Bhowmick",
-		Description: "Developer Portfolio & Knowledge Blog",
+		Description: "A blog about software development, programming, and technology. Also Random musings.",
 		Author:      "Sagnik Bhowmick",
 		Domain:      "sagnikbhowmick.com",
 		BaseURL:     "https://sagnikbhowmick.com",

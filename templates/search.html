@@ -27,8 +27,8 @@
                     <p class="post-item__desc mt-1 mb-0">{{.Description}}</p>
                     {{if .Tags}}
                     <div class="flex flex-wrap gap-1.5 mt-2">
-                        {{range .Tags}}
-                        <span class="tag">{{.}}</span>
+                        {{range split .Tags ","}}
+                        <a href="/tags/{{.}}" class="tag">{{.}}</a>
                         {{end}}
                     </div>
                     {{end}}

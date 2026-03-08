@@ -1,0 +1,6 @@
+.git
+portfolio
+.DS_Store
+*.db-journal
+*.db-shm
+*.db-wal

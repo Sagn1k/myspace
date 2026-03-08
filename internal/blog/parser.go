@@ -64,13 +64,26 @@ func Parse(source []byte) (*models.Blog, error) {
 		blog.Status = v
 	}
 
-	if v, ok := metadata["date"].(string); ok {
+	switch v := metadata["date"].(type) {
+	case string:
 		if t, err := time.Parse("2006-01-02", v); err == nil {
 			blog.Date = t
 		}
+	case time.Time:
+		blog.Date = v
 	}
 
-	if v, ok := metadata["tags"].(string); ok {
+	switch v := metadata["tags"].(type) {
+	case []interface{}:
+		for _, item := range v {
+			if tag, ok := item.(string); ok {
+				tag = strings.TrimSpace(tag)
+				if tag != "" {
+					blog.Tags = append(blog.Tags, tag)
+				}
+			}
+		}
+	case string:
 		for _, tag := range strings.Split(v, ",") {
 			tag = strings.TrimSpace(tag)
 			if tag != "" {
