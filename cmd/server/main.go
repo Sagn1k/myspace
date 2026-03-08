@@ -9,7 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
-	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/sagnikb/myspace/internal/blog"
@@ -73,9 +72,7 @@ func main() {
 	app.Use(helmet.New(helmet.Config{
 		CrossOriginEmbedderPolicy: "unsafe-none",
 	}))
-	app.Use(limiter.New(limiter.Config{
-		Max: 100,
-	}))
+	// Rate limiting handled by Cloud Run concurrency settings
 
 	// Static files
 	app.Static("/static", "./static", fiber.Static{
