@@ -1,5 +1,14 @@
 [
   {
+    "id": "workwatch",
+    "title": "WorkWatch",
+    "description": "A macOS utility that reads your attendance email from Apple Mail, calculates your remaining work hours, and automatically puts your Mac to sleep when the day is done. Supports a live terminal countdown, background daemon with native notifications, and a color-coded monthly attendance log.",
+    "tech_stack": ["Python", "AppleScript", "macOS"],
+    "github_link": "https://github.com/Sagn1k/workwatch",
+    "demo_link": "https://sagnikbhowmick.com/workwatch/install.sh",
+    "featured": true
+  },
+  {
     "id": "referall",
     "title": "Referall",
     "description": "A job referral platform built with Go, Redis, SQLite, gRPC, and Docker. It allows users to refer friends for job opportunities, track referrals, and manage their referral network.",
