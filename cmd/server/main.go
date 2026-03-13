@@ -79,6 +79,11 @@ func main() {
 		MaxAge: 86400,
 	})
 
+	// Workwatch distribution files
+	app.Static("/workwatch", "./static/workwatch", fiber.Static{
+		MaxAge: 3600,
+	})
+
 	// Routes
 	app.Get("/", h.Home)
 	app.Get("/about", h.About)
