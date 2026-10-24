@@ -1,89 +1,150 @@
+{{/*
+  Home (SPEC 6.1): cover, 01 Focus, pull quote, 02 Work, 03 Writing, 04 Contact.
+  Departments without data are left out and the rest renumber in reading
+  order: no projects drops Work (and the "Selected work" button), no posts
+  drops Writing, no post with a pullquote drops the quote.
+*/}}
 {{define "content"}}
-<!-- Hero -->
-<section class="max-w-[720px] mx-auto px-6 pt-20 pb-16 animate-up">
-    <p class="section-label">Hello, I'm</p>
-    <h1 class="font-serif text-3xl md:text-4xl font-medium mt-2 mb-4" style="color: var(--text);">Sagnik Bhowmick</h1>
-    <p class="font-serif text-lg leading-relaxed mb-0" style="color: var(--text-secondary);">
-        I build backend systems, distributed architectures, and developer tools in Go.
-        I'm passionate about writing clean, scalable code and sharing what I learn through my blog.
-    </p>
-    <div class="flex flex-wrap gap-3 mt-8">
-        <a href="/projects" class="btn btn--primary">View Projects</a>
-        <a href="/blog" class="btn btn--outline">Read Blog</a>
-    </div>
-</section>
-
-<!-- Featured Projects -->
-{{if .FeaturedProjects}}
-<section class="max-w-[720px] mx-auto px-6 pb-16 animate-up stagger-1">
-    <hr class="divider mb-12">
-    <div class="section-header">
-        <h2 class="section-header__title">Featured Projects</h2>
-        <a href="/projects" class="section-header__link">View all &rarr;</a>
-    </div>
-    <div class="space-y-4">
-        {{range .FeaturedProjects}}
-        <div class="project-card">
-            <div class="project-card__header">
-                <h3 class="project-card__title">{{.Title}}</h3>
-                <div class="project-card__links">
-                    {{if .GithubLink}}
-                    <a href="{{.GithubLink}}" target="_blank" rel="noopener noreferrer" class="project-card__link" title="Source code">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                        </svg>
-                    </a>
-                    {{end}}
-                    {{if .DemoLink}}
-                    <a href="{{.DemoLink}}" target="_blank" rel="noopener noreferrer" class="project-card__link" title="Live demo">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                        </svg>
-                    </a>
-                    {{end}}
-                </div>
-            </div>
-            <p class="project-card__desc">{{.Description}}</p>
-            <div class="project-card__tech">
-                {{range .TechStack}}
-                <span class="tag">{{.}}</span>
-                {{end}}
-            </div>
+{{- $hasWork := or .FeaturedProjects .OtherProjects}}
+{{- $yrs := .Config.YearsExperience}}{{$yrsNum := ""}}{{with split $yrs "+"}}{{$yrsNum = index . 0}}{{end}}
+{{- $n := 1}}
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap grid">
+      <p class="hero-role c-full rise" style="--d:0"><b>{{.Config.Author}}</b><span class="sep" aria-hidden="true"></span><span>Backend &amp; distributed systems engineer</span></p>
+      <h1 id="hero-title" class="hero-title c-full rise" style="--d:1">I build the <em class="redline">invisible plumbing</em> that powers modern applications.</h1>
+      <div class="hero-body rise" style="--d:2">
+        <p class="hero-dek">{{with $yrs}}{{.}} years designing{{else}}Designing{{end}} resilient, high-throughput services, distributed architectures and the developer tools around them, mostly in Go. I write about what I learn along the way.</p>
+        <div class="hero-cta">
+          {{- if $hasWork}}
+          <a class="btn btn--solid" href="#work">Selected work <span class="arr" aria-hidden="true">→</span></a>
+          <a class="btn btn--line" href="/blog">Read the writing</a>
+          {{- else}}
+          <a class="btn btn--solid" href="/blog">Read the writing <span class="arr" aria-hidden="true">→</span></a>
+          {{- end}}
         </div>
-        {{end}}
-    </div>
-</section>
-{{end}}
-
-<!-- Latest Blog Posts -->
-{{if .LatestBlogs}}
-<section class="max-w-[720px] mx-auto px-6 pb-16 animate-up stagger-2">
-    <hr class="divider mb-12">
-    <div class="section-header">
-        <h2 class="section-header__title">Recent Posts</h2>
-        <a href="/blog" class="section-header__link">All posts &rarr;</a>
-    </div>
-    {{range .LatestBlogs}}
-    <a href="/blog/{{.Slug}}" class="block py-3 group">
-        <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-            <h3 class="font-serif text-base font-medium group-hover:underline" style="color: var(--text);">{{.Title}}</h3>
-            <time class="text-sm flex-shrink-0" style="color: var(--text-dim);">{{.Date.Format "Jan 2, 2006"}}</time>
+        {{- with .Config.Email}}
+        <p class="hero-mail">
+          <span>Or write to <a href="mailto:{{.}}">{{.}}</a></span>
+          <button class="copy-inline" type="button" data-copy="{{.}}" data-copy-label="Email address copied" aria-label="Copy email address">
+            {{- template "icon-copy"}}<span class="copy-label">Copy</span>
+          </button>
+        </p>
+        {{- end}}
+      </div>
+      <aside class="sheet rise" style="--d:3" aria-labelledby="glance-title">
+        <div class="sheet-head">
+          <p id="glance-title" class="label label--ink">At a glance</p>
+          <a class="meta-link" href="/about">More about me <span class="arr" aria-hidden="true">→</span></a>
         </div>
-        <p class="text-sm mt-1 mb-0" style="color: var(--text-secondary);">{{.Description}}</p>
-    </a>
-    {{end}}
-</section>
-{{end}}
-
-<!-- Subscribe -->
-<section class="max-w-[720px] mx-auto px-6 pb-12 animate-up stagger-3">
-    <hr class="divider mb-8">
-    <div class="flex items-center gap-2 text-sm" style="color: var(--text-dim);">
-        <svg class="w-4 h-4" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/>
-        </svg>
-        <span>Subscribe via</span>
-        <a href="/rss.xml" class="underline underline-offset-2" style="color: var(--accent);">RSS Feed</a>
+        <dl class="facts">
+          {{- if $yrsNum}}
+          <div class="fact"><dt class="label">Years in software engineering</dt><dd class="fact-num">{{$yrsNum}}{{if ne $yrsNum $yrs}}<span class="plus">+</span>{{end}}</dd></div>
+          {{- end}}
+          <div class="fact{{if $yrsNum}} fact--col2{{end}}"><dt class="label">Primary language</dt><dd class="fact-num">Go</dd></div>
+          {{- with .LatestBlogs}}{{with index . 0}}
+          <div class="fact fact--wide">
+            <dt class="label">Latest writing&ensp;·&ensp;<time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time></dt>
+            <dd class="fact-latest"><a href="/blog/{{.Slug}}">{{with split .Title ": "}}<span class="title">{{index . 0}} <span class="arr" aria-hidden="true">→</span></span>{{if gt (len .) 1}}<span class="sub">{{join (slice . 1) ": "}}</span>{{end}}{{end}}</a></dd>
+          </div>
+          {{- end}}{{end}}
+        </dl>
+      </aside>
     </div>
-</section>
+  </section>
+{{template "focus-section" dict "N" "01" "Dek" true}}
+{{- with .PullquotePost}}
+
+  <section class="quote" aria-label="From the writing">
+    <div class="wrap grid">
+      <figure>
+        <blockquote cite="/blog/{{.Slug}}"><p><span class="qm">“</span>{{.Pullquote}}<span class="qm">”</span></p></blockquote>
+        <figcaption><a class="u" href="/blog/{{.Slug}}">From <i>{{.Title}}</i> <span class="arr" aria-hidden="true">→</span></a></figcaption>
+      </figure>
+    </div>
+  </section>
+{{- end}}
+{{- if $hasWork}}{{$n = add $n 1}}
+
+  <section class="section" id="work" aria-labelledby="work-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Work</p>
+        <div class="c-main section-title-row">
+          <h2 id="work-title" class="section-title">Selected work</h2>
+          <a class="more" href="/projects">{{if eq .ProjectCount 1}}The project{{else}}All {{.ProjectCount}} projects{{end}} <span class="arr" aria-hidden="true">→</span></a>
+        </div>
+      </header>
+      {{- with .FeaturedProjects}}
+{{template "work-lead" dict "P" (index . 0) "Anchor" false}}
+      {{- end}}
+      {{- if gt (len .FeaturedProjects) 1}}
+
+      <div class="work-row">
+        {{- range $i, $p := .FeaturedProjects}}{{if and (ge $i 1) (le $i 2)}}
+{{template "work-proj" dict "P" $p "Anchor" false}}
+        {{- end}}{{end}}
+      </div>
+      {{- end}}
+      {{- if or (gt (len .FeaturedProjects) 3) .OtherProjects}}
+
+      <div class="also">
+        <p><span class="label">{{if .FeaturedProjects}}Also on the shelf{{else}}On the shelf{{end}}</span>
+          {{- $sep := false}}
+          {{- range $i, $p := .FeaturedProjects}}{{if ge $i 3}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{$p.Title}}</b>{{with $p.ShortSummary}}, {{.}}{{end}}{{$sep = true}}{{end}}{{end}}
+          {{- range .OtherProjects}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{.Title}}</b>{{with .ShortSummary}}, {{.}}{{end}}{{$sep = true}}{{end -}}
+        </p>
+        <a class="more" href="/projects">See all projects <span class="arr" aria-hidden="true">→</span></a>
+      </div>
+      {{- end}}
+    </div>
+  </section>
+{{- end}}
+{{- with .LatestBlogs}}{{$n = add $n 1}}
+
+  <section class="section" id="writing" aria-labelledby="writing-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Writing</p>
+        <div class="c-main section-title-row">
+          <h2 id="writing-title" class="section-title">Recent writing</h2>
+          <a class="more" href="/blog">{{if eq $.PostCount 1}}The article{{else}}All {{$.PostCount}} articles{{end}} <span class="arr" aria-hidden="true">→</span></a>
+        </div>
+      </header>
+      <div class="writing">
+        {{- with index . 0}}
+        <article class="lead-story row-link">
+          <p class="meta dots"><span class="label label--accent">Latest</span><time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time><span>{{.ReadingTime}} min read</span></p>
+          <h3><a class="stretch u" href="/blog/{{.Slug}}">{{.Title}}</a></h3>
+          {{- with .Description}}
+          <p>{{.}}</p>
+          {{- end}}
+          <div class="row">
+            {{- with .Tags}}
+            <ul class="tagline over" aria-label="Tags">
+              {{range $i, $t := .}}{{if lt $i 4}}<li><a href="/tags/{{pathEscape $t}}">{{$t}}</a></li>{{end}}{{end}}
+            </ul>
+            {{- end}}
+            <span class="more" aria-hidden="true">Read the article <span class="arr">→</span></span>
+          </div>
+        </article>
+        {{- end}}
+        <div class="story-list">
+          {{- range $i, $b := .}}{{if $i}}
+          <article class="story row-link">
+            <p class="meta dots"><time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time><span>{{.ReadingTime}} min read</span></p>
+            <h3><a class="stretch u" href="/blog/{{.Slug}}">{{.Title}}</a></h3>
+          </article>
+          {{- end}}{{end}}
+          <div class="links">
+            <a class="more" href="/blog">Browse the index <span class="arr" aria-hidden="true">→</span></a>
+            <a class="more" href="/rss.xml">RSS <span class="arr" aria-hidden="true">→</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{{- end}}
+{{- $n = add $n 1}}
+
+{{template "contact-band" dict "Config" .Config "N" (printf "0%d" $n)}}
 {{end}}

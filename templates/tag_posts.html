@@ -1,39 +1,34 @@
 {{define "content"}}
-<section class="max-w-[720px] mx-auto px-6 py-16">
-    <div class="mb-8 animate-up">
-        <a href="/tags" class="inline-flex items-center gap-1 text-sm mb-4 block" style="color: var(--text-dim);">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-            All tags
-        </a>
-        <h1 class="font-serif text-3xl font-medium" style="color: var(--text);">
-            Posts tagged <em style="color: var(--accent);">{{.Tag}}</em>
-        </h1>
-        <p class="text-sm mt-1 mb-0" style="color: var(--text-dim);">{{len .Blogs}} posts</p>
+  <header class="page-head">
+    <div class="wrap grid">
+      <div class="c-main rise" style="--d:0">
+        <nav class="page-kicker label" aria-label="Breadcrumb"><a class="label--accent" href="/tags">Topics</a><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>Tagged</nav>
+        <h1 class="page-title page-title--echo"><span class="sr-only">Topic: </span><span class="hash" aria-hidden="true">#</span>{{.Tag}}</h1>
+        <p class="page-dek">{{template "index-articles" len .Blogs}} tagged {{.Tag}}{{if gt (len .Blogs) 1}}, newest first{{end}}.</p>
+      </div>
+      <div class="c-rail rise" style="--d:1">
+        <dl class="page-facts">
+          <div><dt class="label">Articles</dt><dd>{{len .Blogs}}</dd></div>
+          {{- with .Blogs}}{{with index . 0}}
+          <div><dt class="label">Latest</dt><dd><time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time></dd></div>
+          {{- end}}{{end}}
+          <div class="facts-feed"><dt class="label">Elsewhere</dt><dd><a class="meta-link" href="/tags">All topics <span class="arr" aria-hidden="true">→</span></a></dd></div>
+        </dl>
+      </div>
     </div>
+  </header>
 
-    <div class="animate-up stagger-1">
-        {{range .Blogs}}
-        <article class="post-item">
-            <a href="/blog/{{.Slug}}" class="block group">
-                <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 mb-1">
-                    <h2 class="post-item__title group-hover:underline">{{.Title}}</h2>
-                    <div class="post-item__meta flex-shrink-0">
-                        <time>{{.Date.Format "Jan 2, 2006"}}</time>
-                        <span class="mx-1">&middot;</span>
-                        <span>{{.ReadingTime}} min</span>
-                    </div>
-                </div>
-                <p class="post-item__desc mb-0">{{.Description}}</p>
-            </a>
-            <div class="flex flex-wrap gap-1.5 mt-2">
-                {{range .Tags}}
-                <a href="/tags/{{.}}" class="tag">{{.}}</a>
-                {{end}}
-            </div>
-        </article>
-        {{end}}
-    </div>
-</section>
+  <div class="wrap">
+    <section class="year-group grid" aria-labelledby="tagged-title" style="margin-top:0">
+      <div class="year-mark c-rail"><div class="inner"><h2 id="tagged-title" class="label">Tagged {{.Tag}}</h2><p class="year-count meta">{{template "index-articles" len .Blogs}}</p></div></div>
+      <div class="c-main">
+        <ol class="entries">
+          {{- range .Blogs}}
+          {{- template "index-entry" dict "Post" . "Layout" "2 Jan 2006" "Filter" false "Current" $.Tag}}
+          {{- end}}
+        </ol>
+        <p class="filter-status meta" style="margin-top:28px"><a class="meta-link" href="/blog">All writing <span class="arr" aria-hidden="true">→</span></a>&emsp;<a class="meta-link" href="/tags">All topics <span class="arr" aria-hidden="true">→</span></a></p>
+      </div>
+    </section>
+  </div>
 {{end}}

@@ -1,0 +1,34 @@
+{{/*
+  error.html: every error status (SPEC §6.10). Data: .Code, .Heading,
+  .Message, .Method and the globals (.CurrentPath is the requested path).
+  404 gets the design's fixed copy with the page's one redline; any other
+  status shows .Heading and .Message as the handler set them. Only those
+  fields reach this page, so error details never do.
+*/}}
+{{define "main-class"}}error{{end}}
+
+{{define "content"}}
+  <div class="wrap grid">
+    <p class="label c-rail rise" style="--d:0"><span class="label--accent">Error</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>
+      {{- if eq .Code 404}}Not found{{else if ge .Code 500}}Server error{{else}}Request error{{end}}</p>
+    <div class="c-main">
+      <p class="error-code rise" style="--d:1" aria-hidden="true">{{.Code}}</p>
+      {{- if eq .Code 404}}
+      <h1 class="error-title rise" style="--d:2">Nothing is listening on <em class="redline">this route.</em></h1>
+      {{- else}}
+      <h1 class="error-title rise" style="--d:2">{{.Heading}}</h1>
+      {{- end}}
+      <p class="request-line rise" style="--d:3">{{.Method}} {{.CurrentPath}} <span class="st">→ {{.Code}}{{if eq .Code 404}} Not Found{{end}}</span></p>
+      {{- if eq .Code 404}}
+      <p class="error-msg rise" style="--d:3">The page may have moved, or the link that brought you here has a typo. The writing index and search cover everything that is here.</p>
+      {{- else}}
+      <p class="error-msg rise" style="--d:3">{{.Message}}</p>
+      {{- end}}
+      <div class="hero-cta rise" style="--d:4">
+        <a class="btn btn--solid" href="/">Go home <span class="arr" aria-hidden="true">→</span></a>
+        <a class="btn btn--line" href="/blog">Browse the writing</a>
+        <button class="btn btn--line" type="button" data-open-palette aria-haspopup="dialog">Search <kbd data-kbd="mod-k" aria-hidden="true">⌘K</kbd></button>
+      </div>
+    </div>
+  </div>
+{{end}}

@@ -1,0 +1,58 @@
+{{/*
+  The contact band (SPEC 5.23 / 6.6), shared by home, about and contact (P1).
+
+    {{template "contact-band" dict "Config" .Config "N" "04"}}
+        the closing band on home and about: section mark "04 / Contact",
+        an h2 and the short dek, on --paper-2 with an ink top rule
+    {{template "contact-band" dict "Config" .Config "Page" true}}
+        the /contact page itself (.contact--page): mark "Contact / Say hello",
+        the page's h1, the full dek and the entrance motion
+
+  Every address and handle comes from .Config; a channel whose URL is empty
+  is left out.
+*/}}
+
+{{define "contact-band"}}
+{{- $c := .Config}}{{$page := .Page}}
+{{- if $page}}
+  <section class="contact contact--page" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail rise" style="--d:0"><span class="n">Contact</span><span class="sl" aria-hidden="true">/</span>Say hello</p>
+      </header>
+      <h1 id="contact-title" class="contact-title rise" style="--d:1">Let’s build something <em>together.</em></h1>
+      <p class="contact-dek rise" style="--d:2">I’m always open to interesting conversations, collaboration opportunities, or just a friendly hello. Whether you have a project idea, need help with backend architecture, or want to discuss distributed systems over coffee, I’d love to hear from you.</p>
+{{- else}}
+  <section class="contact" id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail"><span class="n">{{.N}}</span><span class="sl" aria-hidden="true">/</span>Contact</p>
+      </header>
+      <h2 id="contact-title" class="contact-title">Let’s build something <em>together.</em></h2>
+      <p class="contact-dek">Whether you have a project idea, need help with backend architecture, or want to discuss distributed systems over coffee, I’d love to hear from you.</p>
+{{- end}}
+      {{- with $c.Email}}
+      <div class="email-line{{if $page}} rise{{end}}"{{if $page}} style="--d:3"{{end}}>
+        <a class="email" href="mailto:{{.}}">{{.}}</a>
+        <button class="copy-btn" type="button" data-copy="{{.}}" data-copy-label="Email address copied" aria-label="Copy email address">
+          {{template "icon-copy"}}
+          <span class="copy-label">Copy</span>
+        </button>
+      </div>
+      {{- end}}
+      <div class="channels">
+        {{- with $c.GitHubURL}}
+        <a class="channel" href="{{.}}" rel="me"><span class="label">GitHub</span><span class="h">{{with $c.GitHubHandle}}@{{.}}{{else}}Profile{{end}} <span class="arr arr--ne" aria-hidden="true">↗</span></span></a>
+        {{- end}}
+        {{- with $c.LinkedInURL}}
+        <a class="channel" href="{{.}}" rel="me"><span class="label">LinkedIn</span><span class="h">{{with $c.LinkedInHandle}}in/{{.}}{{else}}Profile{{end}} <span class="arr arr--ne" aria-hidden="true">↗</span></span></a>
+        {{- end}}
+        {{- with $c.XURL}}
+        <a class="channel" href="{{.}}" rel="me"><span class="label">X</span><span class="h">{{with $c.XHandle}}@{{.}}{{else}}Profile{{end}} <span class="arr arr--ne" aria-hidden="true">↗</span></span></a>
+        {{- end}}
+        <a class="channel" href="/rss.xml"><span class="label">RSS</span><span class="h">Subscribe <span class="arr" aria-hidden="true">→</span></span></a>
+      </div>
+      <p class="contact-note">Particularly interested in open-source collaborations, technical writing opportunities, and challenging engineering&nbsp;problems.</p>
+    </div>
+  </section>
+{{- end}}

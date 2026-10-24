@@ -1,0 +1,123 @@
+{{/*
+  Project pieces shared by the home page ("02 / Work") and /projects (P1).
+  Every word comes from projects.json; nothing assumes a project exists.
+
+    {{template "work-lead" dict "P" $project "Anchor" true}}   featured lead: the
+        figure when .Figure names one we draw ("workwatch"), otherwise the
+        type-only .lead-work--text spread
+    {{template "work-proj" dict "P" $project "Anchor" true}}   a .work-row cell
+    {{template "work-shelf-item" $project}}                     a /projects shelf row
+    {{template "work-install" $project}}                        the install line
+    {{template "work-links" $project}}                          Source / Live demo
+    {{template "work-list-end" $}}                              /projects GitHub card
+                                                                (page data; inside the last section's .wrap)
+
+  "Anchor" puts id="{{.ID}}" on the article: /projects needs it for the
+  palette's /projects#id links; the home page leaves it off.
+  A project with an install command never shows its demo link as "Live demo":
+  for WorkWatch that link is the installer script itself.
+*/}}
+
+{{define "work-lead"}}
+{{- $p := .P}}{{$fig := eq $p.Figure "workwatch"}}
+      <article class="lead-work{{if not $fig}} lead-work--text{{end}}"{{if .Anchor}} id="{{$p.ID}}"{{end}} aria-labelledby="p-{{$p.ID}}">
+        {{- if $fig}}
+{{template "fig-workwatch" $p}}
+        {{- end}}
+        <div class="lead-body">
+          <p class="label label--accent">Featured project</p>
+          <h3 id="p-{{$p.ID}}" class="proj-title" style="margin-top:18px">{{$p.Title}}</h3>
+          {{- with $p.Blurb}}
+          <p class="proj-desc">{{.}}</p>
+          {{- end}}
+          {{- $demo := and $p.DemoLink (not $p.Install)}}
+          {{- if or $p.TechStack $p.GithubLink $demo}}
+          <dl class="spec">
+            {{- with $p.TechStack}}
+            <div><dt class="label">Stack</dt><dd>{{join . ", "}}</dd></div>
+            {{- end}}
+            {{- if or $p.GithubLink $demo}}
+            <div><dt class="label">Links</dt><dd>
+              {{- with $p.GithubLink}}<a class="ext" href="{{.}}">Source on GitHub<span class="sr-only">: {{$p.Title}}</span><span class="arr arr--ne" aria-hidden="true">↗</span></a>{{end}}
+              {{- if $demo}}<a class="ext" href="{{$p.DemoLink}}">Live demo<span class="sr-only">: {{$p.Title}}</span><span class="arr arr--ne" aria-hidden="true">↗</span></a>{{end -}}
+            </dd></div>
+            {{- end}}
+          </dl>
+          {{- end}}
+          {{- template "work-install" $p}}
+        </div>
+      </article>
+{{- end}}
+
+{{define "work-proj"}}
+{{- $p := .P}}
+        <article class="proj"{{if .Anchor}} id="{{$p.ID}}"{{end}} aria-labelledby="p-{{$p.ID}}">
+          <h3 id="p-{{$p.ID}}">{{$p.Title}}</h3>
+          {{- with $p.Blurb}}
+          <p>{{.}}</p>
+          {{- end}}
+          {{- with $p.TechStack}}
+          <ul class="chips" aria-label="Stack">{{range .}}<li class="chip">{{.}}</li>{{end}}</ul>
+          {{- end}}
+          {{- template "work-install" $p}}
+          {{- template "work-links" $p}}
+        </article>
+{{- end}}
+
+{{define "work-shelf-item"}}
+        <article class="shelf-item grid" id="{{.ID}}" aria-labelledby="p-{{.ID}}">
+          <h3 id="p-{{.ID}}" class="c-rail">{{.Title}}</h3>
+          <div class="shelf-body">
+            {{- with .Blurb}}
+            <p>{{.}}</p>
+            {{- end}}
+            {{- with .TechStack}}
+            <p class="stack"><span class="sr-only">Stack: </span>{{join . ", "}}</p>
+            {{- end}}
+            {{- template "work-install" .}}
+          </div>
+          {{- template "work-links" .}}
+        </article>
+{{- end}}
+
+{{define "work-links"}}
+{{- $demo := and .DemoLink (not .Install)}}
+{{- if or .GithubLink $demo}}
+          <div class="proj-links">
+            {{- with .GithubLink}}
+            <a class="ext" href="{{.}}">Source<span class="sr-only">: {{$.Title}}</span><span class="arr arr--ne" aria-hidden="true">↗</span></a>
+            {{- end}}
+            {{- if $demo}}
+            <a class="ext" href="{{.DemoLink}}">Live demo<span class="sr-only">: {{.Title}}</span><span class="arr arr--ne" aria-hidden="true">↗</span></a>
+            {{- end}}
+          </div>
+{{- end}}
+{{- end}}
+
+{{define "work-list-end"}}
+{{- with .Config.GitHubURL}}
+      <div class="grid">
+        <aside class="list-end c-main" aria-labelledby="gh-title">
+          {{- with $.Projects}}
+          <p class="label">End of {{if $.OtherProjects}}shelf{{else}}list{{end}}&ensp;·&ensp;{{len .}} project{{if ne (len .) 1}}s{{end}}</p>
+          {{- end}}
+          <h2 id="gh-title">Everything{{if $.Projects}} else{{end}} lives on GitHub</h2>
+          <div class="feed">
+            <a class="btn btn--sm" href="{{.}}" rel="me">{{with $.Config.GitHubHandle}}github.com/{{.}}{{else}}GitHub{{end}} <span class="arr arr--ne" aria-hidden="true">↗</span></a>
+          </div>
+        </aside>
+      </div>
+{{- end}}
+{{- end}}
+
+{{define "work-install"}}
+{{- with .Install}}
+          <div class="install" role="group" aria-labelledby="install-{{$.ID}}">
+            <div class="install__head">
+              <span id="install-{{$.ID}}" class="install__label">Install<span class="sr-only"> {{$.Title}}</span></span>
+              <button class="install__copy" type="button" data-copy="{{.}}" data-copy-label="{{$.Title}} install command copied" aria-label="Copy the {{$.Title}} install command">{{template "icon-copy"}}<span class="copy-label">Copy</span></button>
+            </div>
+            <pre class="install__cmd"><code>{{.}}</code></pre>
+          </div>
+{{- end}}
+{{- end}}

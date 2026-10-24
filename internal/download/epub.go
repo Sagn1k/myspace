@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/sagnikb/myspace/internal/models"
@@ -19,13 +20,23 @@ func GenerateEPUB(blog *models.Blog) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Write([]byte("application/epub+zip"))
+	if _, err := f.Write([]byte("application/epub+zip")); err != nil {
+		return nil, err
+	}
 
-	writeFile(w, "META-INF/container.xml", containerXML())
-	writeFile(w, "OEBPS/content.opf", contentOPF(blog))
-	writeFile(w, "OEBPS/toc.ncx", tocNCX(blog))
-	writeFile(w, "OEBPS/chapter1.xhtml", chapterXHTML(blog))
-	writeFile(w, "OEBPS/style.css", epubCSS())
+	files := []struct{ name, content string }{
+		{"META-INF/container.xml", containerXML()},
+		{"OEBPS/content.opf", contentOPF(blog)},
+		{"OEBPS/nav.xhtml", navXHTML(blog)},
+		{"OEBPS/toc.ncx", tocNCX(blog)},
+		{"OEBPS/chapter1.xhtml", chapterXHTML(blog)},
+		{"OEBPS/style.css", epubCSS()},
+	}
+	for _, file := range files {
+		if err := writeFile(w, file.name, file.content); err != nil {
+			return nil, fmt.Errorf("write %s: %w", file.name, err)
+		}
+	}
 
 	if err := w.Close(); err != nil {
 		return nil, err
@@ -33,9 +44,13 @@ func GenerateEPUB(blog *models.Blog) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func writeFile(w *zip.Writer, name, content string) {
-	f, _ := w.Create(name)
-	f.Write([]byte(content))
+func writeFile(w *zip.Writer, name, content string) error {
+	f, err := w.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte(content))
+	return err
 }
 
 func containerXML() string {
@@ -60,6 +75,7 @@ func contentOPF(blog *models.Blog) string {
     <meta property="dcterms:modified">%s</meta>
   </metadata>
   <manifest>
+    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
     <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
     <item id="style" href="style.css" media-type="text/css"/>
     <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
@@ -73,6 +89,63 @@ func contentOPF(blog *models.Blog) string {
 		blog.Date.Format("2006-01-02"),
 		escapeXML(blog.Description),
 		blog.Date.Format("2006-01-02T15:04:05Z"),
+	)
+}
+
+// navXHTML is the EPUB 3 navigation document every EPUB 3 must have: the
+// article, with its sections (blog.TOC: h2, and h3 under the h2 before it)
+// linking to their headings in the chapter. toc.ncx stays for EPUB 2
+// readers.
+func navXHTML(blog *models.Blog) string {
+	var b strings.Builder
+	link := func(id, title string) {
+		fmt.Fprintf(&b, `<a href="chapter1.xhtml#%s">%s</a>`, escapeXML(id), escapeXML(title))
+	}
+	open := 0 // nested lists left open: 1 inside the article's, 2 inside a section's
+	for _, it := range blog.TOC {
+		switch {
+		case open == 0:
+			b.WriteString("\n        <ol>\n          <li>")
+			open = 1
+		case it.Level == 3 && open == 1:
+			b.WriteString("\n            <ol>\n              <li>")
+			open = 2
+		case it.Level == 2 && open == 2:
+			b.WriteString("</li>\n            </ol>\n          </li>\n          <li>")
+			open = 1
+		case open == 2:
+			b.WriteString("</li>\n              <li>")
+		default:
+			b.WriteString("</li>\n          <li>")
+		}
+		link(it.ID, it.Title)
+	}
+	switch open {
+	case 2:
+		b.WriteString("</li>\n            </ol>\n          </li>\n        </ol>\n      ")
+	case 1:
+		b.WriteString("</li>\n        </ol>\n      ")
+	}
+
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en" xml:lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>%s</title>
+</head>
+<body>
+  <nav epub:type="toc" id="toc">
+    <h1>Contents</h1>
+    <ol>
+      <li><a href="chapter1.xhtml">%s</a>%s</li>
+    </ol>
+  </nav>
+</body>
+</html>`,
+		escapeXML(blog.Title),
+		escapeXML(blog.Title),
+		b.String(),
 	)
 }
 
@@ -96,6 +169,8 @@ func tocNCX(blog *models.Blog) string {
 	)
 }
 
+// chapterXHTML must be well-formed XML: only numeric character references
+// (no HTML named entities) and HTMLContent rendered as XHTML.
 func chapterXHTML(blog *models.Blog) string {
 	tags := ""
 	if len(blog.Tags) > 0 {
@@ -113,7 +188,7 @@ func chapterXHTML(blog *models.Blog) string {
 <body>
   <header>
     <h1>%s</h1>
-    <p class="meta">%s &middot; %s min read</p>
+    <p class="meta">%s &#183; %s min read</p>
     %s
   </header>
   <main>
@@ -127,7 +202,7 @@ func chapterXHTML(blog *models.Blog) string {
 		escapeXML(blog.Title),
 		escapeXML(blog.Title),
 		blog.Date.Format("January 2, 2006"),
-		itoa(blog.ReadingTime),
+		strconv.Itoa(blog.ReadingTime),
 		tags,
 		blog.HTMLContent,
 	)
@@ -148,6 +223,8 @@ h3 { font-size: 1.2em; margin-top: 1.2em; }
 .tags { color: #666; font-size: 0.85em; }
 pre { background: #f4f4f4; padding: 1em; overflow-x: auto; font-size: 0.85em; }
 code { font-family: monospace; }
+.code-block__header { color: #666; font-family: monospace; font-size: 0.75em; }
+.code-block__copy, [hidden] { display: none; }
 footer { margin-top: 3em; color: #999; font-size: 0.8em; border-top: 1px solid #eee; padding-top: 1em; }`
 }
 

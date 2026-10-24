@@ -6,7 +6,9 @@
     "tech_stack": ["Python", "AppleScript", "macOS"],
     "github_link": "https://github.com/Sagn1k/workwatch",
     "demo_link": "https://sagnikbhowmick.com/workwatch/install.sh",
-    "featured": true
+    "install": "curl -fsSL https://sagnikbhowmick.com/workwatch/install.sh | bash",
+    "featured": true,
+    "figure": "workwatch"
   },
   {
     "id": "referall",

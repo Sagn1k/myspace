@@ -3,6 +3,7 @@ title: "Designing Distributed Web Scrapers in Go"
 date: 2026-01-15
 tags: ["go", "distributed-systems", "web-scraping", "concurrency", "architecture"]
 description: "A deep dive into building scalable, fault-tolerant web scrapers using Go's concurrency primitives, message queues, and worker pools."
+pullquote: "Workers will crash, messages will be redelivered. Every operation must be safe to retry."
 status: published
 ---
 

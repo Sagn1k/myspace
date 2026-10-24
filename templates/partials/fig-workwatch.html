@@ -1,0 +1,108 @@
+{{/*
+  Fig. 1, how WorkWatch ends a workday: the lead-project figure for a project
+  whose projects.json "figure" is "workwatch". It is the whole figure (plate,
+  plate head, both drawings, legend, caption) and takes that project as its
+  data, for the title:
+    {{if eq .Figure "workwatch"}}{{template "fig-workwatch" .}}{{end}}
+  Drawn with the design's figure vocabulary (the .plate and .schematic rules
+  in style.css, 8.4): one wide drawing and one tall one, and the .plate
+  container query shows the one whose labels stay legible.
+  Both drawings are aria-hidden; the figcaption describes the figure.
+  Every fact comes from WorkWatch's projects.json description. Element ids are
+  prefixed ww- and must stay unique, so render it at most once per page.
+*/}}
+
+{{define "fig-workwatch"}}
+        <figure class="figure">
+          <div class="plate">
+            <div class="plate-head label"><span class="label--accent">Fig. 1</span><span>{{.Title}} · end of day</span></div>
+            <svg class="schematic schematic--h" viewBox="0 0 640 256" aria-hidden="true" focusable="false">
+              <defs>
+                <marker id="ww-ah1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="mk" d="M1.5 1.5 8.5 5 1.5 8.5"/></marker>
+                <marker id="ww-ah1a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="mk mk--acc" d="M1.5 1.5 8.5 5 1.5 8.5"/></marker>
+              </defs>
+              <rect class="box" x="16" y="63" width="104" height="44"/>
+              <text x="68" y="82" text-anchor="middle">monthly log</text>
+              <text class="t-dim" x="68" y="97" text-anchor="middle">color-coded</text>
+              <path class="ln" d="M170 85H122" marker-end="url(#ww-ah1)"/>
+              <text class="t-dim" x="68" y="148" text-anchor="middle">attendance email</text>
+              <rect class="box" x="16" y="159" width="104" height="44"/>
+              <text x="68" y="185" text-anchor="middle">Apple Mail</text>
+              <path class="ln" d="M120 181H168" marker-end="url(#ww-ah1)"/>
+              <rect class="box" x="170" y="16" width="184" height="216"/>
+              <text class="t-cap" x="186" y="40">WORKWATCH</text>
+              <text class="t-dim" x="338" y="40" text-anchor="end">macOS</text>
+              <path class="hair" d="M171 52H353"/>
+              <text x="186" y="89">hours left</text>
+              <rect class="job-o" x="266" y="79" width="68" height="12"/>
+              <rect class="job" x="266" y="79" width="40" height="12"/>
+              <path class="ln" d="M341 170V100" marker-end="url(#ww-ah1)"/>
+              <text class="t-dim" x="332" y="139" text-anchor="end">calculate</text>
+              <text x="186" y="185">email</text>
+              <rect class="box" x="312" y="174" width="22" height="14"/>
+              <path class="ln" d="M312 174 323 182 334 174"/>
+              <path class="ln" d="M354 85H412" marker-end="url(#ww-ah1)"/>
+              <text class="t-dim" x="468" y="45" text-anchor="middle">countdown</text>
+              <rect class="box" x="414" y="56" width="108" height="60"/>
+              <text x="468" y="81" text-anchor="middle">terminal</text>
+              <text x="468" y="98" text-anchor="middle">or daemon</text>
+              <path class="ln dash" d="M522 94H558" marker-end="url(#ww-ah1)"/>
+              <text class="t-dim" x="598" y="69" text-anchor="middle">notify</text>
+              <rect class="box" x="560" y="79" width="76" height="30"/>
+              <rect class="job-o" x="568" y="88" width="12" height="12"/>
+              <path class="ln" d="M588 90H626M588 98H612"/>
+              <path class="ln acc" d="M468 116V196" marker-end="url(#ww-ah1a)"/>
+              <text class="t-acc" x="476" y="160">day done</text>
+              <rect class="box acc" x="408" y="198" width="120" height="36"/>
+              <text class="t-acc" x="468" y="221" text-anchor="middle">Mac sleeps</text>
+            </svg>
+            <svg class="schematic schematic--v" viewBox="0 0 340 430" aria-hidden="true" focusable="false">
+              <defs>
+                <marker id="ww-ah2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="mk" d="M1.5 1.5 8.5 5 1.5 8.5"/></marker>
+                <marker id="ww-ah2a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path class="mk mk--acc" d="M1.5 1.5 8.5 5 1.5 8.5"/></marker>
+              </defs>
+              <rect class="box" x="16" y="8" width="120" height="44"/>
+              <text x="76" y="34" text-anchor="middle">Apple Mail</text>
+              <path class="ln" d="M76 52V86" marker-end="url(#ww-ah2)"/>
+              <text class="t-dim" x="86" y="73">attendance email</text>
+              <rect class="box" x="204" y="8" width="120" height="44"/>
+              <text x="264" y="27" text-anchor="middle">monthly log</text>
+              <text class="t-dim" x="264" y="42" text-anchor="middle">color-coded</text>
+              <path class="ln" d="M264 88V54" marker-end="url(#ww-ah2)"/>
+              <rect class="box" x="16" y="88" width="308" height="150"/>
+              <text class="t-cap" x="30" y="110">WORKWATCH</text>
+              <text class="t-dim" x="310" y="110" text-anchor="end">macOS</text>
+              <path class="hair" d="M17 122H323"/>
+              <text x="30" y="156">email</text>
+              <rect class="box" x="112" y="145" width="22" height="14"/>
+              <path class="ln" d="M112 145 123 153 134 145"/>
+              <path class="ln" d="M48 168V204" marker-end="url(#ww-ah2)"/>
+              <text class="t-dim" x="58" y="190">calculate</text>
+              <text x="30" y="222">hours left</text>
+              <rect class="job-o" x="112" y="212" width="84" height="12"/>
+              <rect class="job" x="112" y="212" width="50" height="12"/>
+              <path class="ln" d="M160 238V286" marker-end="url(#ww-ah2)"/>
+              <text class="t-dim" x="170" y="266">countdown</text>
+              <rect class="box" x="100" y="288" width="120" height="44"/>
+              <text x="160" y="307" text-anchor="middle">terminal</text>
+              <text x="160" y="322" text-anchor="middle">or daemon</text>
+              <path class="ln dash" d="M220 318H250" marker-end="url(#ww-ah2)"/>
+              <text class="t-dim" x="288" y="296" text-anchor="middle">notify</text>
+              <rect class="box" x="252" y="304" width="72" height="28"/>
+              <rect class="job-o" x="259" y="313" width="10" height="10"/>
+              <path class="ln" d="M276 314H316M276 322H302"/>
+              <path class="ln acc" d="M160 332V384" marker-end="url(#ww-ah2a)"/>
+              <text class="t-acc" x="170" y="362">day done</text>
+              <rect class="box acc" x="100" y="386" width="120" height="36"/>
+              <text class="t-acc" x="160" y="409" text-anchor="middle">Mac sleeps</text>
+            </svg>
+            <ul class="plate-legend" aria-hidden="true">
+              <li><svg viewBox="0 0 12 12"><rect class="job" x="0" y="0" width="12" height="12"/></svg>Hours worked</li>
+              <li><svg viewBox="0 0 12 12"><rect class="job-o" x=".6" y=".6" width="10.8" height="10.8"/></svg>Hours left</li>
+              <li><svg viewBox="0 0 24 12" class="wide"><path class="ln dash" d="M0 6H24"/></svg>Background path</li>
+              <li><svg viewBox="0 0 24 12" class="wide"><path class="ln acc" d="M0 6H24"/></svg>Sleep path</li>
+            </ul>
+          </div>
+          <figcaption><b>Fig. 1</b><span>How {{.Title}} ends a workday: it reads the attendance email from Apple Mail, counts down the hours left in the terminal or a background daemon, and puts the Mac to sleep when the day is&nbsp;done.</span></figcaption>
+        </figure>
+{{end}}

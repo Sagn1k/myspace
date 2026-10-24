@@ -1,10 +1,11 @@
 package blog
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
@@ -16,7 +17,7 @@ type Engine struct {
 	mu       sync.RWMutex
 	blogs    map[string]*models.Blog // slug -> blog
 	tagIndex map[string][]string     // tag -> slugs
-	sorted   []*models.Blog          // sorted by date desc
+	sorted   []*models.Blog          // newest first, then slug
 	db       *database.DB
 }
 
@@ -67,13 +68,26 @@ func (e *Engine) LoadFromDir(dir string) error {
 		e.mu.Unlock()
 
 		if e.db != nil {
-			_ = e.db.UpsertBlog(*blog)
-			_ = e.db.IndexBlog(*blog)
+			if err := e.db.UpsertBlog(*blog); err != nil {
+				return fmt.Errorf("store %s: %w", slug, err)
+			}
+			if err := e.db.IndexBlog(*blog); err != nil {
+				return fmt.Errorf("index %s: %w", slug, err)
+			}
 		}
 	}
 
 	e.rebuildSorted()
 	return nil
+}
+
+// newestFirst orders posts by date descending, breaking ties by slug so the
+// order never depends on map iteration.
+func newestFirst(a, b *models.Blog) int {
+	if c := b.Date.Compare(a.Date); c != 0 {
+		return c
+	}
+	return strings.Compare(a.Slug, b.Slug)
 }
 
 func (e *Engine) rebuildSorted() {
@@ -84,9 +98,7 @@ func (e *Engine) rebuildSorted() {
 	for _, b := range e.blogs {
 		e.sorted = append(e.sorted, b)
 	}
-	sort.Slice(e.sorted, func(i, j int) bool {
-		return e.sorted[i].Date.After(e.sorted[j].Date)
-	})
+	slices.SortFunc(e.sorted, newestFirst)
 }
 
 func (e *Engine) GetBlog(slug string) *models.Blog {
@@ -106,12 +118,59 @@ func (e *Engine) GetAllBlogs() []*models.Blog {
 func (e *Engine) GetLatestBlogs(n int) []*models.Blog {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	if n > len(e.sorted) {
-		n = len(e.sorted)
-	}
+	n = max(0, min(n, len(e.sorted)))
 	result := make([]*models.Blog, n)
 	copy(result, e.sorted[:n])
 	return result
+}
+
+// GetPullquoteBlog returns the newest post with a pullquote, or nil.
+func (e *Engine) GetPullquoteBlog() *models.Blog {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	for _, b := range e.sorted {
+		if b.Pullquote != "" {
+			return b
+		}
+	}
+	return nil
+}
+
+// GetAdjacentBlogs returns the posts published right after (newer) and right
+// before (older) slug. Either is nil at the ends of the list or when slug is
+// unknown.
+func (e *Engine) GetAdjacentBlogs(slug string) (newer, older *models.Blog) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	for i, b := range e.sorted {
+		if b.Slug != slug {
+			continue
+		}
+		if i > 0 {
+			newer = e.sorted[i-1]
+		}
+		if i+1 < len(e.sorted) {
+			older = e.sorted[i+1]
+		}
+		break
+	}
+	return newer, older
+}
+
+// GetBlogsByYear groups all posts by publication year, newest year first.
+func (e *Engine) GetBlogsByYear() []models.YearGroup {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	var groups []models.YearGroup
+	for _, b := range e.sorted {
+		year := b.Date.Year()
+		if n := len(groups); n == 0 || groups[n-1].Year != year {
+			groups = append(groups, models.YearGroup{Year: year})
+		}
+		last := &groups[len(groups)-1]
+		last.Posts = append(last.Posts, b)
+	}
+	return groups
 }
 
 func (e *Engine) GetBlogsByTag(tag string) []*models.Blog {
@@ -125,63 +184,89 @@ func (e *Engine) GetBlogsByTag(tag string) []*models.Blog {
 			blogs = append(blogs, b)
 		}
 	}
-	sort.Slice(blogs, func(i, j int) bool {
-		return blogs[i].Date.After(blogs[j].Date)
-	})
+	slices.SortFunc(blogs, newestFirst)
 	return blogs
 }
 
+// GetAllTags returns every tag ordered by post count descending, then name.
 func (e *Engine) GetAllTags() []models.TagInfo {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	var tags []models.TagInfo
+	tags := make([]models.TagInfo, 0, len(e.tagIndex))
 	for name, slugs := range e.tagIndex {
 		tags = append(tags, models.TagInfo{Name: name, Count: len(slugs)})
 	}
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Count > tags[j].Count
+	slices.SortFunc(tags, func(a, b models.TagInfo) int {
+		if c := cmp.Compare(b.Count, a.Count); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Name, b.Name)
 	})
 	return tags
 }
 
+// GetRelatedBlogs returns up to limit posts sharing tags with slug, ordered by
+// number of shared tags, then newest first, then slug.
 func (e *Engine) GetRelatedBlogs(slug string, limit int) []*models.Blog {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
+	var related []*models.Blog
+	for _, o := range e.othersByRelevance(slug) {
+		if len(related) >= limit || o.shared == 0 {
+			break
+		}
+		related = append(related, o.blog)
+	}
+	return related
+}
+
+// GetSuggestedBlogs returns up to limit posts to read after slug: the posts
+// GetRelatedBlogs ranks first, then every other post, newest first. Unlike
+// GetRelatedBlogs it always returns min(limit, posts-1) posts for a known
+// slug, so a "keep reading" list fills whenever the site has enough posts.
+func (e *Engine) GetSuggestedBlogs(slug string, limit int) []*models.Blog {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	others := e.othersByRelevance(slug)
+	suggested := make([]*models.Blog, max(0, min(limit, len(others))))
+	for i := range suggested {
+		suggested[i] = others[i].blog
+	}
+	return suggested
+}
+
+type scoredBlog struct {
+	blog   *models.Blog
+	shared int // tags in common with the reference post
+}
+
+// othersByRelevance returns every post except slug, most shared tags first,
+// then newest first, then slug; nil when slug is unknown. Callers must hold
+// e.mu.
+func (e *Engine) othersByRelevance(slug string) []scoredBlog {
 	current, ok := e.blogs[slug]
 	if !ok {
 		return nil
 	}
-
-	scores := make(map[string]int)
+	shared := make(map[string]int)
 	for _, tag := range current.Tags {
 		for _, s := range e.tagIndex[tag] {
-			if s != slug {
-				scores[s]++
-			}
+			shared[s]++
 		}
 	}
-
-	type scored struct {
-		slug  string
-		score int
+	others := make([]scoredBlog, 0, len(e.sorted))
+	for _, b := range e.sorted {
+		if b.Slug != slug {
+			others = append(others, scoredBlog{blog: b, shared: shared[b.Slug]})
+		}
 	}
-	var ranked []scored
-	for s, sc := range scores {
-		ranked = append(ranked, scored{s, sc})
-	}
-	sort.Slice(ranked, func(i, j int) bool {
-		return ranked[i].score > ranked[j].score
+	// e.sorted is newest first (then slug), and a stable sort keeps that
+	// order among posts with the same number of shared tags.
+	slices.SortStableFunc(others, func(a, b scoredBlog) int {
+		return cmp.Compare(b.shared, a.shared)
 	})
-
-	if limit > len(ranked) {
-		limit = len(ranked)
-	}
-
-	var related []*models.Blog
-	for _, r := range ranked[:limit] {
-		related = append(related, e.blogs[r.slug])
-	}
-	return related
+	return others
 }

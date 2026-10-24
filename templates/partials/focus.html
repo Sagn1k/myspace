@@ -1,0 +1,50 @@
+{{/*
+  "What I do": the four focus areas (SPEC 5.9), shared by home (01 / Focus,
+  with its dek) and about (02 / Focus) (P1). The copy is the owner's own
+  (the old about page).
+
+    {{template "focus-section" dict "N" "01" "Dek" true}}   the whole department
+    {{template "focus-areas"}}                              just the ul.areas
+*/}}
+
+{{define "focus-section"}}
+  <section class="section" id="focus" aria-labelledby="focus-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail"><span class="n">{{.N}}</span><span class="sl" aria-hidden="true">/</span>Focus</p>
+        <div class="c-main">
+          <h2 id="focus-title" class="section-title">What I do</h2>
+          {{- if .Dek}}
+          <p class="section-dek">I like complex problems at scale, and solving them with systems that stay easy to operate.</p>
+          {{- end}}
+        </div>
+      </header>
+      {{- template "focus-areas"}}
+    </div>
+  </section>
+{{- end}}
+
+{{define "focus-areas"}}
+      <ul class="areas">
+        <li class="area">
+          <h3>Backend Engineering</h3>
+          <p>Designing and building high-performance APIs, microservices, and data pipelines using Go, Python, and modern cloud-native tooling.</p>
+          <p class="stack"><span class="sr-only">Tools: </span>Go, Python, gRPC, PostgreSQL</p>
+        </li>
+        <li class="area">
+          <h3>Distributed Systems</h3>
+          <p>Building fault-tolerant, scalable architectures with event-driven patterns, consensus protocols, and distributed data stores.</p>
+          <p class="stack"><span class="sr-only">Tools: </span>Redis, Kafka, RabbitMQ</p>
+        </li>
+        <li class="area">
+          <h3>Infrastructure &amp; DevOps</h3>
+          <p>Automating deployments, managing Kubernetes clusters, building CI/CD pipelines, and ensuring reliable production&nbsp;environments.</p>
+          <p class="stack"><span class="sr-only">Tools: </span>Docker, Kubernetes, AWS, Terraform</p>
+        </li>
+        <li class="area">
+          <h3>Developer Tools</h3>
+          <p>Creating CLI tools, SDKs, and internal platforms that improve developer productivity and streamline engineering workflows.</p>
+          <p class="stack"><span class="sr-only">Tools: </span>Go, Cobra, Bash</p>
+        </li>
+      </ul>
+{{- end}}

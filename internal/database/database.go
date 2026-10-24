@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,22 +11,52 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// Search wraps matched terms in these control characters. They cannot occur
+// in markup, so callers can HTML-escape the text first and then turn them
+// into tags.
+const (
+	MarkStart = "\x02"
+	MarkEnd   = "\x03"
+)
+
+// ftsColumns are blogs_fts's columns in order: content is a post's prose
+// (Blog.PlainText) and code the text of its code blocks (Blog.CodeText).
+const ftsColumns = "slug, title, description, tags, content, code"
+
+// searchSQL ranks with bm25 weighted per blogs_fts column (ftsColumns):
+// title > tags > description > content > code. Snippets come from the prose
+// only, so a result never quotes a code listing; a post that matches only in
+// code shows the opening of its prose.
+const searchSQL = `
+	SELECT slug,
+		highlight(blogs_fts, 1, ?1, ?2),
+		snippet(blogs_fts, 4, ?1, ?2, '…', 32),
+		bm25(blogs_fts, 0.0, 10.0, 3.0, 5.0, 1.0, 0.5) AS score
+	FROM blogs_fts
+	WHERE blogs_fts MATCH ?3
+	ORDER BY score, slug
+	LIMIT ?4`
+
 type DB struct {
 	conn *sql.DB
 }
 
 func New(path string) (*DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create db dir: %w", err)
 	}
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
+	// SQLite allows a single writer, and every pooled connection to
+	// DB_PATH=:memory: would get its own empty database, so use one connection.
+	conn.SetMaxOpenConns(1)
 
 	db := &DB{conn: conn}
 	if err := db.migrate(); err != nil {
-		return nil, err
+		conn.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return db, nil
 }
@@ -35,6 +66,32 @@ func (db *DB) Close() error {
 }
 
 func (db *DB) migrate() error {
+	// The full-text index is derived data, rebuilt from content/blogs at
+	// every start (IndexBlog). An index an older version built with other
+	// columns is dropped, so the CREATE below makes the current one.
+	var cols []string
+	rows, err := db.conn.Query(`SELECT name FROM pragma_table_info('blogs_fts')`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		cols = append(cols, name)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(cols) > 0 && strings.Join(cols, ", ") != ftsColumns {
+		if _, err := db.conn.Exec(`DROP TABLE blogs_fts`); err != nil {
+			return fmt.Errorf("drop outdated search index: %w", err)
+		}
+	}
+
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS blogs (
 			id TEXT PRIMARY KEY,
@@ -55,13 +112,7 @@ func (db *DB) migrate() error {
 			demo_link TEXT,
 			featured INTEGER DEFAULT 0
 		)`,
-		`CREATE VIRTUAL TABLE IF NOT EXISTS blogs_fts USING fts5(
-			slug,
-			title,
-			description,
-			tags,
-			content
-		)`,
+		`CREATE VIRTUAL TABLE IF NOT EXISTS blogs_fts USING fts5(` + ftsColumns + `)`,
 	}
 
 	for _, q := range queries {
@@ -90,24 +141,32 @@ func (db *DB) UpsertBlog(b models.Blog) error {
 	return err
 }
 
+// IndexBlog replaces the post's full-text entry with its prose and code.
 func (db *DB) IndexBlog(b models.Blog) error {
-	_, _ = db.conn.Exec(`DELETE FROM blogs_fts WHERE slug = ?`, b.Slug)
-	_, err := db.conn.Exec(`
-		INSERT INTO blogs_fts (slug, title, description, tags, content)
-		VALUES (?, ?, ?, ?, ?)`,
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`DELETE FROM blogs_fts WHERE slug = ?`, b.Slug); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO blogs_fts (`+ftsColumns+`)
+		VALUES (?, ?, ?, ?, ?, ?)`,
 		b.Slug, b.Title, b.Description,
-		strings.Join(b.Tags, " "), b.Content,
-	)
-	return err
+		strings.Join(b.Tags, " "), b.PlainText, b.CodeText,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
-func (db *DB) Search(query string) ([]models.SearchResult, error) {
-	rows, err := db.conn.Query(`
-		SELECT slug, title, description, tags, rank
-		FROM blogs_fts
-		WHERE blogs_fts MATCH ?
-		ORDER BY rank
-		LIMIT 20`, query)
+// Search runs an FTS5 MATCH expression. The expression must already be safe
+// FTS5 syntax; build it from user input with the search package.
+func (db *DB) Search(match string, limit int) ([]models.SearchResult, error) {
+	rows, err := db.conn.Query(searchSQL, MarkStart, MarkEnd, match, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +175,7 @@ func (db *DB) Search(query string) ([]models.SearchResult, error) {
 	var results []models.SearchResult
 	for rows.Next() {
 		var r models.SearchResult
-		if err := rows.Scan(&r.Slug, &r.Title, &r.Description, &r.Tags, &r.Score); err != nil {
+		if err := rows.Scan(&r.Slug, &r.Title, &r.Snippet, &r.Score); err != nil {
 			return nil, err
 		}
 		results = append(results, r)

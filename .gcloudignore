@@ -1,0 +1,11 @@
+# Files `gcloud builds submit` must not upload. Without this file gcloud
+# uploads everything not in .gitignore, including the credentials file that
+# google-github-actions/auth writes into the workspace (gha-creds-*.json).
+.gcloudignore
+.git
+.gitignore
+.github/
+.gstack/
+.claude/
+gha-creds-*.json
+#!include:.gitignore

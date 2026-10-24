@@ -1,40 +1,84 @@
+{{/*
+  Projects (SPEC 6.4): page head, 01 Featured (the first featured project as
+  the lead, the rest in the work row), 02 Shelf (.OtherProjects; left out when
+  there are none). The GitHub list-end card closes the last section, as in the
+  mockup, or stands alone when there are no projects. Sections renumber when
+  one is missing. Every project article carries id="{{.ID}}" for /projects#id.
+  A row of exactly three goes 3-up on wide screens (.work-row--3).
+*/}}
 {{define "content"}}
-<section class="max-w-[720px] mx-auto px-6 py-16">
-    <div class="mb-10 animate-up">
-        <h1 class="font-serif text-3xl font-medium mb-2" style="color: var(--text);">Projects</h1>
-        <p class="text-sm mb-0" style="color: var(--text-dim);">Things I've built</p>
+{{- $n := 0}}
+{{- $allSource := true}}{{range .Projects}}{{if not .GithubLink}}{{$allSource = false}}{{end}}{{end}}
+  <header class="page-head">
+    <div class="wrap grid">
+      <div class="c-main rise" style="--d:0">
+        <p class="page-kicker label"><span class="label--accent">Work</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>Projects &amp; tools</p>
+        <h1 class="page-title">Projects</h1>
+        <p class="page-dek">Things I’ve built.{{if and .Projects $allSource}} The source for each one is on GitHub.{{end}}</p>
+      </div>
+      <div class="c-rail rise" style="--d:1">
+        <dl class="page-facts">
+          <div><dt class="label">Projects</dt><dd>{{len .Projects}}</dd></div>
+          {{- /* "Featured" only says something when not every project is */}}
+          {{- if and .FeaturedProjects (ne (len .FeaturedProjects) (len .Projects))}}
+          <div><dt class="label">Featured</dt><dd>{{len .FeaturedProjects}}</dd></div>
+          {{- end}}
+          {{- with .Config.GitHubURL}}
+          <div class="facts-feed"><dt class="label">Everything else</dt><dd><a class="meta-link" href="{{.}}" rel="me">GitHub <span class="arr arr--ne" aria-hidden="true">↗</span></a></dd></div>
+          {{- end}}
+        </dl>
+      </div>
     </div>
+  </header>
+{{- with .FeaturedProjects}}{{$n = add $n 1}}
 
-    <div class="space-y-4 animate-up stagger-1">
-        {{range .Projects}}
-        <div class="project-card">
-            <div class="project-card__header">
-                <h2 class="project-card__title">{{.Title}}</h2>
-                <div class="project-card__links">
-                    {{if .GithubLink}}
-                    <a href="{{.GithubLink}}" target="_blank" rel="noopener noreferrer" class="project-card__link" title="Source code">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                        </svg>
-                    </a>
-                    {{end}}
-                    {{if .DemoLink}}
-                    <a href="{{.DemoLink}}" target="_blank" rel="noopener noreferrer" class="project-card__link" title="Live demo">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                        </svg>
-                    </a>
-                    {{end}}
-                </div>
-            </div>
-            <p class="project-card__desc">{{.Description}}</p>
-            <div class="project-card__tech">
-                {{range .TechStack}}
-                <span class="tag">{{.}}</span>
-                {{end}}
-            </div>
-        </div>
-        {{end}}
+  <section class="section" style="padding-top:0" aria-labelledby="featured-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Featured</p>
+        <div class="c-main"><h2 id="featured-title" class="section-title">Featured work</h2></div>
+      </header>
+{{template "work-lead" dict "P" (index . 0) "Anchor" true}}
+      {{- if gt (len .) 1}}
+
+      <div class="work-row{{if eq (len .) 4}} work-row--3{{end}}">
+        {{- range $i, $p := .}}{{if $i}}
+{{template "work-proj" dict "P" $p "Anchor" true}}
+        {{- end}}{{end}}
+      </div>
+      {{- end}}
+      {{- if not $.OtherProjects}}
+{{template "work-list-end" $}}
+      {{- end}}
     </div>
-</section>
+  </section>
+{{- end}}
+{{- with .OtherProjects}}{{$n = add $n 1}}
+
+  <section class="section"{{if not $.FeaturedProjects}} style="padding-top:0"{{end}} aria-labelledby="shelf-title">
+    <div class="wrap">
+      <header class="section-head grid">
+        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Shelf</p>
+        <div class="c-main">
+          <h2 id="shelf-title" class="section-title">On the shelf</h2>
+          <p class="section-dek">Smaller tools and the setup I work in every day.</p>
+        </div>
+      </header>
+      <div class="shelf">
+        {{- range .}}
+{{template "work-shelf-item" .}}
+        {{- end}}
+      </div>
+{{template "work-list-end" $}}
+    </div>
+  </section>
+{{- end}}
+{{- if not .Projects}}{{with .Config.GitHubURL}}
+
+  <section class="section" style="padding-top:0" aria-label="Projects">
+    <div class="wrap">
+{{template "work-list-end" $}}
+    </div>
+  </section>
+{{- end}}{{end}}
 {{end}}

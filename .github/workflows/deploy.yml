@@ -21,6 +21,7 @@ jobs:
           go-version-file: go.mod
 
       - run: go vet ./...
+      - run: go test ./...
       - run: go build ./...
 
   deploy:
@@ -69,4 +70,5 @@ jobs:
             --allow-unauthenticated \
             --min-instances 0 \
             --max-instances 5 \
-            --memory 256Mi
+            --memory 256Mi \
+            --update-env-vars REVISION=${{ github.sha }}

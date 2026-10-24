@@ -3,12 +3,19 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"html"
 	"html/template"
-	"log"
+	"io"
+	"mime"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sagnikb/myspace/internal/blog"
@@ -17,6 +24,19 @@ import (
 	"github.com/sagnikb/myspace/internal/rss"
 	"github.com/sagnikb/myspace/internal/search"
 )
+
+// pages are the templates rendered inside base.html.
+var pages = []string{
+	"home", "about", "projects", "blog_list", "blog_post",
+	"tags", "tag_posts", "search", "contact", "error",
+}
+
+// pageHooks are the base.html blocks a page may redefine. A page must define
+// "content"; any other name base.html defines is off limits to pages.
+var pageHooks = []string{"header-extra", "main-class"}
+
+// keepReadingSlots is the number of posts in a post's "Keep reading" list.
+const keepReadingSlots = 3
 
 type Handler struct {
 	engine   *blog.Engine
@@ -34,6 +54,14 @@ func New(engine *blog.Engine, searchEngine *search.Engine, config models.SiteCon
 	}
 }
 
+// LoadTemplates parses, for every page, base.html, every partials/*.html in
+// name order (there may be none) and the page's own file into one template
+// set. Partials hold {{define}}s shared by all pages. Because html/template
+// silently lets a later definition replace an earlier one, a name defined by
+// two partials, by a partial and base.html, or by a page and a partial is an
+// error, as is a page redefining a base.html template other than the hooks in
+// pageHooks. Each set is escaped once here, so a contextual-escaping mistake
+// also fails at startup rather than on the first request.
 func (h *Handler) LoadTemplates(dir string) error {
 	funcMap := template.FuncMap{
 		"join":     strings.Join,
@@ -61,24 +89,128 @@ func (h *Handler) LoadTemplates(dir string) error {
 			}
 			return s
 		},
+		"asset":       h.assetURL,
+		"currentYear": func() int { return time.Now().Year() },
+		"lower":       strings.ToLower,
+		"dict":        dict,
+		// pathEscape makes a value one URL path segment: a tag such as
+		// "ci/cd" or "c#" links to /tags/ci%2Fcd, /tags/c%23 (html/template
+		// leaves "/", "?" and "#" alone in a URL). The handlers unescape it.
+		"pathEscape": url.PathEscape,
 	}
 
 	baseFile := filepath.Join(dir, "base.html")
-	pages := []string{
-		"home", "about", "projects", "blog_list", "blog_post",
-		"tags", "tag_posts", "search", "contact",
+	partials, err := filepath.Glob(filepath.Join(dir, "partials", "*.html"))
+	if err != nil {
+		return fmt.Errorf("list partials: %w", err)
+	}
+	slices.Sort(partials)
+
+	// owner maps every name defined in base.html or a partial to its file.
+	owner := make(map[string]string)
+	baseNames, err := definedNames(funcMap, baseFile)
+	if err != nil {
+		return err
+	}
+	for _, name := range baseNames {
+		owner[name] = baseFile
+	}
+	for _, file := range partials {
+		names, err := definedNames(funcMap, file)
+		if err != nil {
+			return err
+		}
+		for _, name := range names {
+			if prev, ok := owner[name]; ok {
+				return fmt.Errorf("template %q is defined in both %s and %s", name, prev, file)
+			}
+			owner[name] = file
+		}
 	}
 
-	h.tmpls = make(map[string]*template.Template)
+	tmpls := make(map[string]*template.Template, len(pages))
 	for _, page := range pages {
 		pageFile := filepath.Join(dir, page+".html")
-		tmpl, err := template.New("").Funcs(funcMap).ParseFiles(baseFile, pageFile)
+		names, err := definedNames(funcMap, pageFile)
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(names, "content") {
+			return fmt.Errorf("%s does not define \"content\"", pageFile)
+		}
+		for _, name := range names {
+			prev, ok := owner[name]
+			if !ok || (prev == baseFile && slices.Contains(pageHooks, name)) {
+				continue
+			}
+			if prev == baseFile {
+				return fmt.Errorf("%s redefines %q from %s; pages may only define \"content\", the hooks %s and names of their own",
+					pageFile, name, baseFile, strings.Join(pageHooks, ", "))
+			}
+			return fmt.Errorf("template %q is defined in both %s and %s", name, prev, pageFile)
+		}
+
+		files := append(append([]string{baseFile}, partials...), pageFile)
+		tmpl, err := template.New("").Funcs(funcMap).ParseFiles(files...)
 		if err != nil {
 			return fmt.Errorf("parse template %s: %w", page, err)
 		}
-		h.tmpls[page] = tmpl
+		// html/template escapes a set the first time it executes. Running it
+		// once without data surfaces escaping errors now; the errors that the
+		// missing data causes are expected and ignored.
+		for _, entry := range []string{"base", "main-class"} {
+			if tmpl.Lookup(entry) == nil {
+				continue
+			}
+			if err := tmpl.ExecuteTemplate(io.Discard, entry, nil); err != nil {
+				var escapeErr *template.Error
+				if errors.As(err, &escapeErr) {
+					return fmt.Errorf("template %s: %w", page, err)
+				}
+			}
+		}
+		tmpls[page] = tmpl
 	}
+	h.tmpls = tmpls
 	return nil
+}
+
+// definedNames returns the names file defines with {{define}} or {{block}}.
+func definedNames(funcMap template.FuncMap, file string) ([]string, error) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("read template: %w", err)
+	}
+	root := filepath.Base(file)
+	t, err := template.New(root).Funcs(funcMap).Parse(string(data))
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", file, err)
+	}
+	var names []string
+	for _, d := range t.Templates() {
+		if d.Name() != root {
+			names = append(names, d.Name())
+		}
+	}
+	slices.Sort(names)
+	return names, nil
+}
+
+// dict builds a map from alternating string keys and values, so a partial
+// can take several arguments: {{template "x" dict "Post" . "Tag" $.Tag}}.
+func dict(pairs ...any) (map[string]any, error) {
+	if len(pairs)%2 != 0 {
+		return nil, fmt.Errorf("dict: odd number of arguments (%d)", len(pairs))
+	}
+	m := make(map[string]any, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		key, ok := pairs[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict: key %d is %T, want string", i/2, pairs[i])
+		}
+		m[key] = pairs[i+1]
+	}
+	return m, nil
 }
 
 func (h *Handler) LoadProjects(path string) error {
@@ -86,7 +218,20 @@ func (h *Handler) LoadProjects(path string) error {
 	if err != nil {
 		return fmt.Errorf("read projects: %w", err)
 	}
-	return json.Unmarshal(data, &h.projects)
+	if err := json.Unmarshal(data, &h.projects); err != nil {
+		return fmt.Errorf("parse projects: %w", err)
+	}
+	return nil
+}
+
+// assetURL returns the URL of a file under static/ with the cache-busting
+// version appended.
+func (h *Handler) assetURL(path string) string {
+	u := "/static/" + strings.TrimPrefix(path, "/")
+	if h.config.AssetVersion != "" {
+		u += "?v=" + h.config.AssetVersion
+	}
+	return u
 }
 
 func (h *Handler) Robots(c *fiber.Ctx) error {
@@ -100,167 +245,252 @@ func (h *Handler) Robots(c *fiber.Ctx) error {
 	return c.SendString(b.String())
 }
 
+// render executes a page template inside base.html. Failures are returned to
+// the error handler, which logs them and serves a generic error page, so
+// template details never reach the client.
 func (h *Handler) render(c *fiber.Ctx, name string, data fiber.Map) error {
+	tmpl, ok := h.tmpls[name]
+	if !ok {
+		return fmt.Errorf("render: unknown template %q", name)
+	}
 	if data == nil {
 		data = fiber.Map{}
 	}
 	data["Config"] = h.config
 	data["CurrentPath"] = c.Path()
-
-	// Convert Schema strings to template.HTML wrapped in script tags
-	if schema, ok := data["Schema"].(string); ok && schema != "" {
-		data["SchemaJSON"] = template.HTML(`<script type="application/ld+json">` + schema + `</script>`)
-		delete(data, "Schema")
+	data["Page"] = name
+	if _, ok := data["Section"]; !ok {
+		data["Section"] = ""
 	}
-
-	tmpl, ok := h.tmpls[name]
-	if !ok {
-		return c.Status(500).SendString("Unknown template: " + name)
+	if _, ok := data["NoIndex"]; !ok {
+		data["NoIndex"] = false
+	}
+	// <main> gets a class attribute only when the page defines "main-class"
+	data["MainClass"] = ""
+	if tmpl.Lookup("main-class") != nil {
+		var class bytes.Buffer
+		if err := tmpl.ExecuteTemplate(&class, "main-class", data); err != nil {
+			return fmt.Errorf("render %s: main-class: %w", name, err)
+		}
+		data["MainClass"] = strings.Join(strings.Fields(html.UnescapeString(class.String())), " ")
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, "base", data); err != nil {
-		log.Printf("template error [%s]: %v", name, err)
-		return c.Status(500).SendString("Template error: " + err.Error())
+		return fmt.Errorf("render %s: %w", name, err)
 	}
-	c.Set("Content-Type", "text/html; charset=utf-8")
+	c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 	return c.Send(buf.Bytes())
 }
 
 // Route handlers
 
 func (h *Handler) Home(c *fiber.Ctx) error {
-	featured := h.getFeaturedProjects()
-	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"WebSite","name":%q,"url":%q,"description":%q,"author":{"@type":"Person","name":%q},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"%s/search?q={search_term_string}"},"query-input":"required name=search_term_string"}}`,
-		h.config.Title, h.config.BaseURL, h.config.Description, h.config.Author, h.config.BaseURL)
+	featured, other := h.splitProjects()
+	tags := h.engine.GetAllTags()
 	return h.render(c, "home", fiber.Map{
 		"Title":            "Home",
 		"Description":      h.config.Description,
+		"Section":          "home",
 		"LatestBlogs":      h.engine.GetLatestBlogs(3),
+		"PullquotePost":    h.engine.GetPullquoteBlog(),
 		"FeaturedProjects": featured,
-		"Schema":           schema,
+		"OtherProjects":    other,
+		"PostCount":        len(h.engine.GetAllBlogs()),
+		"ProjectCount":     len(h.projects),
+		"TagCount":         len(tags),
+		"Tags":             tags,
+		"SchemaJSON":       ldJSON(h.websiteSchema()),
 	})
 }
 
 func (h *Handler) About(c *fiber.Ctx) error {
-	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"Person","name":%q,"url":%q,"jobTitle":"Software Engineer","description":"Backend engineer building distributed systems and developer tools in Go."}`,
-		h.config.Author, h.config.BaseURL)
 	return h.render(c, "about", fiber.Map{
 		"Title":       "About",
 		"Description": fmt.Sprintf("About %s — software engineer building backend systems and developer tools in Go.", h.config.Author),
-		"Schema":      schema,
+		"Section":     "about",
+		"PostCount":   len(h.engine.GetAllBlogs()),
+		"SchemaJSON":  ldJSON(h.personSchema()),
 	})
 }
 
 func (h *Handler) Projects(c *fiber.Ctx) error {
+	featured, other := h.splitProjects()
 	return h.render(c, "projects", fiber.Map{
-		"Title":       "Projects",
-		"Description": fmt.Sprintf("Open source projects and tools built by %s.", h.config.Author),
-		"Projects":    h.projects,
+		"Title":            "Projects",
+		"Description":      fmt.Sprintf("Open source projects and tools built by %s.", h.config.Author),
+		"Section":          "projects",
+		"Projects":         h.projects,
+		"FeaturedProjects": featured,
+		"OtherProjects":    other,
 	})
 }
 
 func (h *Handler) BlogList(c *fiber.Ctx) error {
 	blogs := h.engine.GetAllBlogs()
-	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"Blog","name":%q,"url":"%s/blog","description":"Articles on software development, Go, distributed systems, and developer tools.","author":{"@type":"Person","name":%q},"blogPost":[`,
-		h.config.Title+" Blog", h.config.BaseURL, h.config.Author)
-	for i, b := range blogs {
-		if i > 0 {
-			schema += ","
-		}
-		schema += fmt.Sprintf(`{"@type":"BlogPosting","headline":%q,"url":"%s/blog/%s","datePublished":"%s","description":%q}`,
-			b.Title, h.config.BaseURL, b.Slug, b.Date.Format("2006-01-02"), b.Description)
-	}
-	schema += `]}`
 	return h.render(c, "blog_list", fiber.Map{
-		"Title":       "Blog",
-		"Description": "Articles on software development, Go, distributed systems, and developer tools.",
+		"Title":       "Writing",
+		"Description": blogDescription,
+		"Section":     "blog",
 		"Blogs":       blogs,
+		"Years":       h.engine.GetBlogsByYear(),
 		"Tags":        h.engine.GetAllTags(),
-		"Schema":      schema,
+		"SchemaJSON":  ldJSON(h.blogSchema(blogs)),
 	})
 }
 
 func (h *Handler) BlogPost(c *fiber.Ctx) error {
-	slug := c.Params("slug")
+	slug, ok := param(c, "slug")
+	if !ok {
+		return h.NotFound(c)
+	}
 	post := h.engine.GetBlog(slug)
 	if post == nil {
-		return c.Status(404).SendString("Post not found")
+		return h.NotFound(c)
 	}
 
-	related := h.engine.GetRelatedBlogs(slug, 3)
-
-	tagsJSON := "[]"
-	if len(post.Tags) > 0 {
-		tagsJSON = `["` + strings.Join(post.Tags, `","`) + `"]`
-	}
-
-	schema := fmt.Sprintf(`{"@context":"https://schema.org","@type":"BlogPosting","headline":%q,"description":%q,"datePublished":"%s","author":{"@type":"Person","name":%q,"url":%q},"publisher":{"@type":"Person","name":%q},"mainEntityOfPage":{"@type":"WebPage","@id":"%s/blog/%s"},"keywords":%s,"wordCount":%d,"timeRequired":"PT%dM"}`,
-		post.Title, post.Description, post.Date.Format("2006-01-02T15:04:05Z07:00"),
-		h.config.Author, h.config.BaseURL, h.config.Author,
-		h.config.BaseURL, post.Slug, tagsJSON,
-		len(strings.Fields(post.Content)), post.ReadingTime)
-
-	breadcrumb := fmt.Sprintf(`{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"%s"},{"@type":"ListItem","position":2,"name":"Blog","item":"%s/blog"},{"@type":"ListItem","position":3,"name":%q,"item":"%s/blog/%s"}]}`,
-		h.config.BaseURL, h.config.BaseURL, post.Title, h.config.BaseURL, post.Slug)
-
+	newer, older := h.engine.GetAdjacentBlogs(slug)
+	// Up to two suggestions can be the adjacent posts, which are already shown.
+	suggested := h.engine.GetSuggestedBlogs(slug, keepReadingSlots+2)
 	return h.render(c, "blog_post", fiber.Map{
 		"Title":        post.Title,
 		"Description":  post.Description,
+		"Section":      "blog",
 		"Post":         post,
-		"RelatedPosts": related,
-		"SchemaJSON":   template.HTML(`<script type="application/ld+json">` + schema + `</script><script type="application/ld+json">` + breadcrumb + `</script>`),
+		"RelatedPosts": h.engine.GetRelatedBlogs(slug, 3),
+		"NewerPost":    newer,
+		"OlderPost":    older,
+		"KeepReading":  keepReading(post, older, newer, suggested),
+		"SchemaJSON":   ldJSON(h.postingSchema(post), h.breadcrumbSchema(post)),
 	})
+}
+
+// keepReading fills post's "Keep reading" slots in order: the next older
+// post (prev), the next newer post (next), then suggestions not already
+// listed. A suggestion that shares a tag with post is "related"; the rest
+// (the newest posts, when too few share a tag) are just "more" writing.
+func keepReading(post, older, newer *models.Blog, suggested []*models.Blog) []models.KeepItem {
+	items := make([]models.KeepItem, 0, keepReadingSlots)
+	listed := func(p *models.Blog) bool {
+		for _, it := range items {
+			if it.Post.Slug == p.Slug {
+				return true
+			}
+		}
+		return false
+	}
+	if older != nil {
+		items = append(items, models.KeepItem{Dir: "prev", Post: older})
+	}
+	if newer != nil && !listed(newer) {
+		items = append(items, models.KeepItem{Dir: "next", Post: newer})
+	}
+	for _, p := range suggested {
+		if len(items) == keepReadingSlots {
+			break
+		}
+		if p != nil && !listed(p) {
+			dir := "more"
+			if sharesTag(post, p) {
+				dir = "related"
+			}
+			items = append(items, models.KeepItem{Dir: dir, Post: p})
+		}
+	}
+	return items
+}
+
+// sharesTag reports whether a and b have a tag in common.
+func sharesTag(a, b *models.Blog) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	for _, t := range a.Tags {
+		if slices.Contains(b.Tags, t) {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Handler) Tags(c *fiber.Ctx) error {
 	return h.render(c, "tags", fiber.Map{
-		"Title": "Tags",
-		"Tags":  h.engine.GetAllTags(),
+		"Title":     "Topics",
+		"Section":   "blog",
+		"Tags":      h.engine.GetAllTags(),
+		"PostCount": len(h.engine.GetAllBlogs()),
 	})
 }
 
 func (h *Handler) TagPosts(c *fiber.Ctx) error {
-	tag := c.Params("tag")
+	tag, ok := param(c, "tag")
+	if !ok {
+		return h.NotFound(c)
+	}
 	blogs := h.engine.GetBlogsByTag(tag)
+	if len(blogs) == 0 {
+		return h.NotFound(c)
+	}
 
 	return h.render(c, "tag_posts", fiber.Map{
-		"Title": fmt.Sprintf("Posts tagged: %s", tag),
-		"Tag":   tag,
-		"Blogs": blogs,
+		"Title":   "#" + tag,
+		"Section": "blog",
+		"Tag":     tag,
+		"Blogs":   blogs,
 	})
 }
 
 func (h *Handler) Search(c *fiber.Ctx) error {
-	query := c.Query("q")
-	var results []models.SearchResult
-
-	if query != "" {
-		var err error
-		results, err = h.search.Search(query)
-		if err != nil {
-			results = nil
-		}
+	query := strings.TrimSpace(c.Query("q"))
+	results, err := h.search.Search(query)
+	if err != nil {
+		return err
 	}
 
+	hits := make([]models.SearchHit, 0, len(results))
+	for _, r := range results {
+		post := h.engine.GetBlog(r.Slug)
+		if post == nil {
+			continue // stale index row for a removed or unpublished post
+		}
+		hits = append(hits, models.SearchHit{Post: post, TitleHTML: r.TitleHTML, Snippet: r.Snippet})
+	}
+
+	title := "Search"
+	if query != "" {
+		title = "Search: " + query
+	}
 	return h.render(c, "search", fiber.Map{
-		"Title":   "Search",
-		"Query":   query,
-		"Results": results,
+		"Title":       title,
+		"Section":     "blog",
+		"NoIndex":     true,
+		"Query":       query,
+		"Results":     hits,
+		"ResultCount": len(hits),
+		"PostCount":   len(h.engine.GetAllBlogs()),
 	})
 }
 
 func (h *Handler) Contact(c *fiber.Ctx) error {
 	return h.render(c, "contact", fiber.Map{
-		"Title": "Contact",
+		"Title":   "Contact",
+		"Section": "contact",
 	})
+}
+
+// Favicon redirects /favicon.ico to the site icon (Config.Favicon).
+func (h *Handler) Favicon(c *fiber.Ctx) error {
+	if h.config.Favicon == "" {
+		return h.NotFound(c)
+	}
+	return c.Redirect("/static/"+h.config.Favicon, fiber.StatusMovedPermanently)
 }
 
 func (h *Handler) RSS(c *fiber.Ctx) error {
 	blogs := h.engine.GetAllBlogs()
 	data, err := rss.Generate(blogs, h.config)
 	if err != nil {
-		return c.Status(500).SendString("Error generating RSS")
+		return fmt.Errorf("generate rss: %w", err)
 	}
 	c.Set("Content-Type", "application/rss+xml; charset=utf-8")
 	return c.Send(data)
@@ -288,16 +518,16 @@ func (h *Handler) Sitemap(c *fiber.Ctx) error {
 		{"/contact", "yearly", "0.5"},
 	}
 	for _, p := range staticPages {
-		fmt.Fprintf(&b, "<url><loc>%s%s</loc><changefreq>%s</changefreq><priority>%s</priority></url>\n",
-			h.config.BaseURL, p.loc, p.changefreq, p.priority)
+		fmt.Fprintf(&b, "<url><loc>%s</loc><changefreq>%s</changefreq><priority>%s</priority></url>\n",
+			html.EscapeString(h.config.BaseURL+p.loc), p.changefreq, p.priority)
 	}
 	for _, blog := range blogs {
-		fmt.Fprintf(&b, "<url><loc>%s/blog/%s</loc><lastmod>%s</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>\n",
-			h.config.BaseURL, blog.Slug, blog.Date.Format("2006-01-02"))
+		fmt.Fprintf(&b, "<url><loc>%s</loc><lastmod>%s</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>\n",
+			html.EscapeString(h.config.BaseURL+"/blog/"+url.PathEscape(blog.Slug)), blog.Date.Format("2006-01-02"))
 	}
 	for _, tag := range tags {
-		fmt.Fprintf(&b, "<url><loc>%s/tags/%s</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>\n",
-			h.config.BaseURL, tag.Name)
+		fmt.Fprintf(&b, "<url><loc>%s</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>\n",
+			html.EscapeString(h.config.BaseURL+"/tags/"+url.PathEscape(tag.Name)))
 	}
 
 	b.WriteString("</urlset>")
@@ -306,52 +536,73 @@ func (h *Handler) Sitemap(c *fiber.Ctx) error {
 }
 
 func (h *Handler) DownloadPDF(c *fiber.Ctx) error {
-	slug := c.Params("slug")
-	post := h.engine.GetBlog(slug)
+	post := h.downloadPost(c)
 	if post == nil {
-		return c.Status(404).SendString("Post not found")
+		return h.NotFound(c)
 	}
 
-	data, err := download.GeneratePDF(post)
+	data, err := download.GeneratePDF(post, h.config)
 	if err != nil {
-		return c.Status(500).SendString("Error generating PDF")
+		return fmt.Errorf("generate pdf %s: %w", post.Slug, err)
 	}
 
 	c.Set("Content-Type", "application/pdf")
-	c.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, slug))
+	c.Set("Content-Disposition", attachment(post.Slug+".pdf"))
 	return c.Send(data)
 }
 
 func (h *Handler) DownloadEPUB(c *fiber.Ctx) error {
-	slug := c.Params("slug")
-	post := h.engine.GetBlog(slug)
+	post := h.downloadPost(c)
 	if post == nil {
-		return c.Status(404).SendString("Post not found")
+		return h.NotFound(c)
 	}
 
 	data, err := download.GenerateEPUB(post)
 	if err != nil {
-		return c.Status(500).SendString("Error generating EPUB")
+		return fmt.Errorf("generate epub %s: %w", post.Slug, err)
 	}
 
 	c.Set("Content-Type", "application/epub+zip")
-	c.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.epub"`, slug))
+	c.Set("Content-Disposition", attachment(post.Slug+".epub"))
 	return c.Send(data)
 }
 
-func (h *Handler) getFeaturedProjects() []models.Project {
-	var featured []models.Project
+func (h *Handler) downloadPost(c *fiber.Ctx) *models.Blog {
+	slug, ok := param(c, "slug")
+	if !ok {
+		return nil
+	}
+	return h.engine.GetBlog(slug)
+}
+
+func (h *Handler) splitProjects() (featured, other []models.Project) {
 	for _, p := range h.projects {
 		if p.Featured {
 			featured = append(featured, p)
+		} else {
+			other = append(other, p)
 		}
 	}
-	return featured
+	return featured, other
+}
+
+// param returns the URL-decoded route parameter name, reporting false when it
+// is empty or malformed.
+func param(c *fiber.Ctx, name string) (string, bool) {
+	v, err := url.PathUnescape(c.Params(name))
+	if err != nil || v == "" {
+		return "", false
+	}
+	return v, true
+}
+
+func attachment(filename string) string {
+	return mime.FormatMediaType("attachment", map[string]string{"filename": filename})
 }
 
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	if utf8.RuneCountInString(s) <= n {
 		return s
 	}
-	return s[:n] + "..."
+	return string([]rune(s)[:max(n, 0)]) + "..."
 }

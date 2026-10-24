@@ -1,127 +1,246 @@
-{{define "base"}}
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
+{{/*
+  base.html: the frame every page renders inside (head, header, tab row,
+  footer, command palette, live region). Pages define:
+    {{define "content"}}…{{end}}         required: everything inside <main>
+    {{define "header-extra"}}…{{end}}    optional: markup at the end of the
+                                         sticky header (the post page's
+                                         reading-progress bar)
+    {{define "main-class"}}…{{end}}      optional: class(es) for <main>
+                                         (the error page: "error"); <main>
+                                         has no class attribute without one
+  Shared {{define}}s live in templates/partials/*.html (see partials/site.html).
+*/}}
+{{define "main-class"}}{{end}}
+{{define "base-title"}}{{if eq .Page "home"}}{{.Config.Title}} · {{.Config.Role}}{{else}}{{with .Title}}{{.}} · {{end}}{{.Config.Title}}{{end}}{{end}}
+{{define "base-description"}}{{with .Description}}{{.}}{{else}}{{.Config.Description}}{{end}}{{end}}
+{{define "base"}}<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <title>{{if .Title}}{{.Title}} | {{end}}{{.Config.Title}}</title>
-    <meta name="description" content="{{if .Description}}{{.Description}}{{else if .Title}}{{.Title}}{{else}}{{.Config.Description}}{{end}}">
-    <meta name="author" content="{{.Config.Author}}">
-    <meta name="robots" content="index, follow">
-    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-
-    <meta property="og:type" content="{{if .Post}}article{{else}}website{{end}}">
-    <meta property="og:title" content="{{if .Title}}{{.Title}} | {{end}}{{.Config.Title}}">
-    <meta property="og:description" content="{{if .Description}}{{.Description}}{{else}}{{.Config.Description}}{{end}}">
-    <meta property="og:url" content="{{.Config.BaseURL}}{{.CurrentPath}}">
-    <meta property="og:site_name" content="{{.Config.Title}}">
-    <meta property="og:locale" content="en_US">
-    {{if .Post}}
-    <meta property="article:published_time" content="{{.Post.Date.Format "2006-01-02T15:04:05Z07:00"}}">
-    <meta property="article:author" content="{{.Config.Author}}">
-    {{range .Post.Tags}}<meta property="article:tag" content="{{.}}">
-    {{end}}
-    {{end}}
-
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{if .Title}}{{.Title}} | {{end}}{{.Config.Title}}">
-    <meta name="twitter:description" content="{{if .Description}}{{.Description}}{{else}}{{.Config.Description}}{{end}}">
-
-    <link rel="canonical" href="{{.Config.BaseURL}}{{.CurrentPath}}">
-    <link rel="alternate" type="application/rss+xml" title="{{.Config.Title}}" href="/rss.xml">
-
-    {{if .SchemaJSON}}
-    {{html .SchemaJSON}}
-    {{end}}
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Karla:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: ['class', '[data-theme="dark"]'],
-            theme: {
-                extend: {
-                    fontFamily: {
-                        serif: ['Newsreader', 'Georgia', 'Times New Roman', 'serif'],
-                        sans: ['Karla', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-                    },
-                },
-            },
-        }
-    </script>
-
-    <link rel="stylesheet" href="/static/css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{template "base-title" .}}</title>
+<meta name="description" content="{{template "base-description" .}}">
+{{- if .NoIndex}}
+<meta name="robots" content="noindex">
+{{- else}}
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="{{.Config.BaseURL}}{{.CurrentPath}}">
+{{- end}}
+<meta name="color-scheme" content="light dark">
+<noscript><meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)"></noscript>
+<meta name="theme-color" content="#F6F2EA">
+<script>
+  /* Theme bootstrap, inline in <head>: runs before first paint (no flash).
+     Reads "theme", migrates the legacy "theme-preference" key, else follows
+     the OS. Also keeps <meta name=theme-color> in step. */
+  (function () {
+    var d = document.documentElement, t, s = null;
+    try { s = window.localStorage; t = s.getItem('theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark' && s) {
+      try {
+        var legacy = s.getItem('theme-preference');
+        if (legacy === 'light' || legacy === 'dark') { t = legacy; s.setItem('theme', t); }
+        s.removeItem('theme-preference');
+      } catch (e) {}
+    }
+    if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    d.setAttribute('data-theme', t);
+    d.classList.add('js');
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', t === 'dark' ? '#141311' : '#F6F2EA');
+  })();
+</script>
+<meta name="author" content="{{.Config.Author}}">
+<meta property="og:type" content="{{with .Post}}article{{else}}website{{end}}">
+<meta property="og:site_name" content="{{.Config.Title}}">
+<meta property="og:title" content="{{template "base-title" .}}">
+<meta property="og:description" content="{{template "base-description" .}}">
+<meta property="og:url" content="{{.Config.BaseURL}}{{.CurrentPath}}">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="{{.Config.BaseURL}}/static/img/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{.Config.Author}} · {{.Config.Role}}">
+{{- with .Post}}
+<meta property="article:published_time" content="{{.Date.Format "2006-01-02T15:04:05Z07:00"}}">
+<meta property="article:author" content="{{$.Config.Author}}">
+{{- range .Tags}}
+<meta property="article:tag" content="{{.}}">
+{{- end}}
+{{- end}}
+<meta name="twitter:card" content="summary_large_image">
+{{- with .Config.XHandle}}
+<meta name="twitter:creator" content="@{{.}}">
+{{- end}}
+<meta name="twitter:title" content="{{template "base-title" .}}">
+<meta name="twitter:description" content="{{template "base-description" .}}">
+<meta name="twitter:image" content="{{.Config.BaseURL}}/static/img/og.png">
+<meta name="twitter:image:alt" content="{{.Config.Author}} · {{.Config.Role}}">
+<link rel="alternate" type="application/rss+xml" title="{{.Config.Title}}" href="/rss.xml">
+{{- with .Config.Favicon}}
+<link rel="icon" href="{{asset .}}" type="{{$.Config.FaviconType}}">
+{{- end}}
+{{- /* the generated touch icon goes with the generated favicon only: when the
+       owner's favicon.ico is the site icon, no generated mark replaces it */}}
+{{- if ne .Config.Favicon "favicon.ico"}}
+<link rel="apple-touch-icon" href="{{asset "img/apple-touch-icon.png"}}">
+{{- end}}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400..600&amp;family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400&amp;display=swap">
+<link rel="stylesheet" href="{{asset "css/style.css"}}">
+{{- with .SchemaJSON}}
+{{.}}
+{{- end}}
 </head>
-<body class="font-sans min-h-screen flex flex-col">
+<body id="top" class="page-{{.Page}}">
+<a class="skip-link" href="#main">Skip to content</a>
 
-    <div id="reading-progress" class="reading-progress hidden"></div>
+<header class="site-header">
+  <div class="wrap site-header__inner">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">SB</span>
+      <span class="brand-text">
+        <span class="brand-name">{{.Config.Author}}</span>
+        <span class="brand-role">{{.Config.Role}}</span>
+        <span class="sr-only">, home</span>
+      </span>
+    </a>
 
-    <!-- Navigation -->
-    <nav class="nav">
-        <div class="nav__inner">
-            <a href="/" class="nav__logo">Sagnik</a>
-
-            <div class="nav__links hidden md:flex">
-                <a href="/" class="nav__link {{if eq .CurrentPath "/"}}nav__link--active{{end}}">Home</a>
-                <a href="/blog" class="nav__link {{if eq .CurrentPath "/blog"}}nav__link--active{{end}}">Blog</a>
-                <a href="/projects" class="nav__link {{if eq .CurrentPath "/projects"}}nav__link--active{{end}}">Projects</a>
-                <a href="/about" class="nav__link {{if eq .CurrentPath "/about"}}nav__link--active{{end}}">About</a>
-                <a href="/contact" class="nav__link {{if eq .CurrentPath "/contact"}}nav__link--active{{end}}">Contact</a>
-
-                <button id="theme-toggle" class="nav__theme-btn" aria-label="Toggle theme">
-                    <svg id="theme-icon-sun" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                    <svg id="theme-icon-moon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                    </svg>
-                </button>
-            </div>
-
-            <button id="mobile-menu-btn" class="nav__mobile-btn md:hidden" aria-label="Toggle menu">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"/>
-                    <path id="close-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <div id="mobile-menu" class="nav__mobile-menu md:hidden">
-            <a href="/" class="{{if eq .CurrentPath "/"}}nav__link--active{{end}}">Home</a>
-            <a href="/blog" class="{{if eq .CurrentPath "/blog"}}nav__link--active{{end}}">Blog</a>
-            <a href="/projects" class="{{if eq .CurrentPath "/projects"}}nav__link--active{{end}}">Projects</a>
-            <a href="/about" class="{{if eq .CurrentPath "/about"}}nav__link--active{{end}}">About</a>
-            <a href="/contact" class="{{if eq .CurrentPath "/contact"}}nav__link--active{{end}}">Contact</a>
-            <div class="pt-2 mt-2 border-t" style="border-color: var(--border);">
-                <button id="theme-toggle-mobile" class="text-sm" style="color: var(--text-dim);">Toggle Theme</button>
-            </div>
-        </div>
+    <nav class="nav" aria-label="Primary">
+      <a href="/"{{if eq .Section "home"}} aria-current="{{if eq .CurrentPath "/"}}page{{else}}true{{end}}"{{end}}>Home</a>
+      <a href="/blog"{{if eq .Section "blog"}} aria-current="{{if eq .CurrentPath "/blog"}}page{{else}}true{{end}}"{{end}}>Writing</a>
+      <a href="/projects"{{if eq .Section "projects"}} aria-current="{{if eq .CurrentPath "/projects"}}page{{else}}true{{end}}"{{end}}>Projects</a>
+      <a href="/about"{{if eq .Section "about"}} aria-current="{{if eq .CurrentPath "/about"}}page{{else}}true{{end}}"{{end}}>About</a>
+      <a href="/contact"{{if eq .Section "contact"}} aria-current="{{if eq .CurrentPath "/contact"}}page{{else}}true{{end}}"{{end}}>Contact</a>
     </nav>
 
-    <div class="flex-1">
-        {{template "content" .}}
+    <div class="tools">
+      <button class="cmdk" type="button" data-open-palette aria-haspopup="dialog" aria-label="Search articles and commands" aria-keyshortcuts="Meta+K Control+K" title="Search">
+        {{template "icon-search"}}
+        <span class="cmdk__text" aria-hidden="true">Search</span>
+        <kbd data-kbd="mod-k" aria-hidden="true">⌘K</kbd>
+      </button>
+      <noscript><a class="cmdk" href="/search" aria-label="Search articles">{{template "icon-search"}}<span class="cmdk__text" aria-hidden="true">Search</span></a></noscript>
+      <button class="icon-btn theme-toggle" type="button" aria-label="Switch colour theme">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" stroke-linejoin="round"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke-linecap="round"/></svg>
+      </button>
     </div>
+  </div>
+  {{- block "header-extra" .}}{{end}}
+</header>
+<nav class="tabbar" aria-label="Primary">
+  <ul class="wrap">
+    <li><a href="/"{{if eq .Section "home"}} aria-current="{{if eq .CurrentPath "/"}}page{{else}}true{{end}}"{{end}}>Home</a></li>
+    <li><a href="/blog"{{if eq .Section "blog"}} aria-current="{{if eq .CurrentPath "/blog"}}page{{else}}true{{end}}"{{end}}>Writing</a></li>
+    <li><a href="/projects"{{if eq .Section "projects"}} aria-current="{{if eq .CurrentPath "/projects"}}page{{else}}true{{end}}"{{end}}>Projects</a></li>
+    <li><a href="/about"{{if eq .Section "about"}} aria-current="{{if eq .CurrentPath "/about"}}page{{else}}true{{end}}"{{end}}>About</a></li>
+    <li><a href="/contact"{{if eq .Section "contact"}} aria-current="{{if eq .CurrentPath "/contact"}}page{{else}}true{{end}}"{{end}}>Contact</a></li>
+  </ul>
+</nav>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer__inner">
-            <div class="footer__links">
-                <a href="/blog" class="footer__link">Blog</a>
-                <a href="/projects" class="footer__link">Projects</a>
-                <a href="/about" class="footer__link">About</a>
-                <a href="/contact" class="footer__link">Contact</a>
-                <a href="/rss.xml" class="footer__link" style="color: var(--accent);">RSS</a>
-            </div>
-            <p class="footer__copy">&copy; {{.Config.Author}}</p>
-        </div>
-    </footer>
+<main id="main"{{with .MainClass}} class="{{.}}"{{end}}>
+{{template "content" .}}
+</main>
 
-    <script src="/static/js/main.js"></script>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <span class="brand-mark brand-mark--lg" aria-hidden="true">SB</span>
+        <p class="footer-name">{{.Config.Author}}</p>
+        <p class="footer-blurb">Software engineer{{with .Config.YearsExperience}}, {{.}} years in{{end}}. Backend systems, distributed architectures, infrastructure and developer&nbsp;tools.</p>
+      </div>
+      <nav class="footer-col footer-col--site" aria-labelledby="ft-site">
+        <p id="ft-site" class="label">Site</p>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/blog">Writing</a></li>
+          <li><a href="/projects">Projects</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
+          <li><a href="/tags">Topics</a></li>
+        </ul>
+      </nav>
+      <div class="footer-col footer-col--else">
+        <p id="ft-else" class="label">Elsewhere</p>
+        <ul aria-labelledby="ft-else">
+          {{- with .Config.GitHubURL}}
+          <li><a href="{{.}}" rel="me">GitHub</a></li>
+          {{- end}}
+          {{- with .Config.LinkedInURL}}
+          <li><a href="{{.}}" rel="me">LinkedIn</a></li>
+          {{- end}}
+          {{- with .Config.XURL}}
+          <li><a href="{{.}}" rel="me">X</a></li>
+          {{- end}}
+          <li><a href="/rss.xml">RSS feed</a></li>
+          {{- with .Config.Email}}
+          <li><a href="mailto:{{.}}">Email</a></li>
+          {{- end}}
+        </ul>
+      </div>
+      <div class="colophon">
+        <p class="label">Colophon</p>
+        <p>Set in Newsreader and JetBrains Mono. One stylesheet, a little vanilla JavaScript, no client&nbsp;framework.</p>
+        <dl class="title-block meta">
+          <div><dt>Built with</dt><dd>Go · Fiber · html/template</dd></div>
+          {{- with .Config.Revision}}
+          <div><dt>Revision</dt><dd>{{.}}</dd></div>
+          {{- end}}
+        </dl>
+      </div>
+    </div>
+    <div class="footer-bottom meta">
+      <p>© {{currentYear}} {{.Config.Author}}</p>
+      <p><span class="kbd-hint"><kbd data-kbd="mod-k">⌘K</kbd>&ensp;to search</span><a class="meta-link" href="#top">Back to top <span class="arr" aria-hidden="true">↑</span></a></p>
+    </div>
+  </div>
+</footer>
+
+<dialog class="palette" id="palette" aria-labelledby="palette-title">
+  <h2 id="palette-title" class="sr-only">Search and commands</h2>
+  <div class="palette-search">
+    {{template "icon-search"}}
+    <input id="palette-input" type="text" role="combobox" aria-expanded="true" aria-controls="palette-list" aria-autocomplete="list" aria-label="Search articles, pages and actions" placeholder="Search articles, pages, actions…" data-placeholder-short="Search the site…" autocomplete="off" spellcheck="false">
+    <button class="palette-close" type="button" data-close-palette aria-label="Close search"><kbd class="palette-close__key" aria-hidden="true">Esc</kbd><span class="palette-close__text" aria-hidden="true">Close</span></button>
+  </div>
+  <div id="palette-list" class="palette-list" role="listbox" aria-label="Results" data-index="/search-index.json">
+    {{- /* Articles and Projects are filled by main.js from /search-index.json on first open; empty groups stay hidden. */}}
+    <div role="group" aria-labelledby="pg-articles" data-group="articles">
+      <p id="pg-articles" class="palette-group label" role="presentation">Articles</p>
+    </div>
+    <div role="group" aria-labelledby="pg-pages">
+      <p id="pg-pages" class="palette-group label" role="presentation">Pages</p>
+      <a id="po-p1" class="palette-item" role="option" tabindex="-1" href="/">Home <span class="meta">/</span></a>
+      <a id="po-p2" class="palette-item" role="option" tabindex="-1" href="/blog" data-keywords="blog articles posts index">Writing <span class="meta">/blog</span></a>
+      <a id="po-p3" class="palette-item" role="option" tabindex="-1" href="/projects" data-keywords="work">Projects <span class="meta">/projects</span></a>
+      <a id="po-p4" class="palette-item" role="option" tabindex="-1" href="/about">About <span class="meta">/about</span></a>
+      <a id="po-p5" class="palette-item" role="option" tabindex="-1" href="/contact" data-keywords="email hire">Contact <span class="meta">/contact</span></a>
+      <a id="po-p6" class="palette-item" role="option" tabindex="-1" href="/tags" data-keywords="tags">Topics <span class="meta">/tags</span></a>
+    </div>
+    <div role="group" aria-labelledby="pg-projects" data-group="projects">
+      <p id="pg-projects" class="palette-group label" role="presentation">Projects</p>
+    </div>
+    <div role="group" aria-labelledby="pg-actions">
+      <p id="pg-actions" class="palette-group label" role="presentation">Actions</p>
+      <button id="po-x1" class="palette-item" role="option" tabindex="-1" type="button" data-action="theme" data-keywords="dark light mode">Switch light / dark theme <span class="meta">Theme</span></button>
+      {{- with .Config.Email}}
+      <button id="po-x2" class="palette-item" role="option" tabindex="-1" type="button" data-action="copy-email" data-email="{{.}}" data-keywords="mail contact">Copy email address <span class="meta">{{with split . "@"}}{{index . 0}}@…{{end}}</span></button>
+      {{- end}}
+      <a id="po-x3" class="palette-item" role="option" tabindex="-1" href="/rss.xml" data-keywords="feed subscribe">Subscribe via RSS <span class="meta">/rss.xml</span></a>
+    </div>
+    <div role="group" aria-labelledby="pg-search" data-group="search-all" hidden>
+      <p id="pg-search" class="palette-group label" role="presentation">Full text</p>
+      <a id="po-s1" class="palette-item" role="option" tabindex="-1" href="/search" data-search-all><span>Search all writing for “<span class="q"></span>”</span> <span class="meta">↵</span></a>
+    </div>
+  </div>
+  <div class="palette-foot meta" aria-hidden="true"><span>↑ ↓ to move</span><span>↵ to open</span><span>Esc to close</span></div>
+</dialog>
+<div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+<script src="{{asset "js/main.js"}}" defer></script>
 </body>
 </html>
 {{end}}
