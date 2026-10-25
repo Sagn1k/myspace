@@ -22,8 +22,8 @@ import (
 	"github.com/sagnikb/myspace/internal/search"
 )
 
-// revision is the git commit the binary was built from, shown in the footer
-// colophon. Set it at build time:
+// revision is the git commit the binary was built from, exposed as
+// <meta name="revision"> in every page's head. Set it at build time:
 //
 //	go build -ldflags "-X main.revision=$(git rev-parse --short HEAD)" ./cmd/server
 //

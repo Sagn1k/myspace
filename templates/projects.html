@@ -1,84 +1,35 @@
 {{/*
-  Projects (SPEC 6.4): page head, 01 Featured (the first featured project as
-  the lead, the rest in the work row), 02 Shelf (.OtherProjects; left out when
-  there are none). The GitHub list-end card closes the last section, as in the
-  mockup, or stands alone when there are no projects. Sections renumber when
-  one is missing. Every project article carries id="{{.ID}}" for /projects#id.
-  A row of exactly three goes 3-up on wide screens (.work-row--3).
+  Projects: the page head, then every project, featured first and then the
+  rest (title, blurb, stack, the install panel when projects.json has an
+  "install" command, Source / Live demo), then the GitHub line. Every
+  project article carries id="{{.ID}}" for /projects#id.
 */}}
 {{define "content"}}
-{{- $n := 0}}
-{{- $allSource := true}}{{range .Projects}}{{if not .GithubLink}}{{$allSource = false}}{{end}}{{end}}
   <header class="page-head">
-    <div class="wrap grid">
-      <div class="c-main rise" style="--d:0">
-        <p class="page-kicker label"><span class="label--accent">Work</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>Projects &amp; tools</p>
-        <h1 class="page-title">Projects</h1>
-        <p class="page-dek">Things I’ve built.{{if and .Projects $allSource}} The source for each one is on GitHub.{{end}}</p>
-      </div>
-      <div class="c-rail rise" style="--d:1">
-        <dl class="page-facts">
-          <div><dt class="label">Projects</dt><dd>{{len .Projects}}</dd></div>
-          {{- /* "Featured" only says something when not every project is */}}
-          {{- if and .FeaturedProjects (ne (len .FeaturedProjects) (len .Projects))}}
-          <div><dt class="label">Featured</dt><dd>{{len .FeaturedProjects}}</dd></div>
-          {{- end}}
-          {{- with .Config.GitHubURL}}
-          <div class="facts-feed"><dt class="label">Everything else</dt><dd><a class="meta-link" href="{{.}}" rel="me">GitHub <span class="arr arr--ne" aria-hidden="true">↗</span></a></dd></div>
-          {{- end}}
-        </dl>
-      </div>
-    </div>
+    <h1 class="page-title">Projects</h1>
+    <p class="page-dek">Things I’ve built.</p>
   </header>
-{{- with .FeaturedProjects}}{{$n = add $n 1}}
-
-  <section class="section" style="padding-top:0" aria-labelledby="featured-title">
-    <div class="wrap">
-      <header class="section-head grid">
-        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Featured</p>
-        <div class="c-main"><h2 id="featured-title" class="section-title">Featured work</h2></div>
-      </header>
-{{template "work-lead" dict "P" (index . 0) "Anchor" true}}
-      {{- if gt (len .) 1}}
-
-      <div class="work-row{{if eq (len .) 4}} work-row--3{{end}}">
-        {{- range $i, $p := .}}{{if $i}}
-{{template "work-proj" dict "P" $p "Anchor" true}}
-        {{- end}}{{end}}
-      </div>
-      {{- end}}
-      {{- if not $.OtherProjects}}
-{{template "work-list-end" $}}
-      {{- end}}
-    </div>
-  </section>
-{{- end}}
-{{- with .OtherProjects}}{{$n = add $n 1}}
-
-  <section class="section"{{if not $.FeaturedProjects}} style="padding-top:0"{{end}} aria-labelledby="shelf-title">
-    <div class="wrap">
-      <header class="section-head grid">
-        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Shelf</p>
-        <div class="c-main">
-          <h2 id="shelf-title" class="section-title">On the shelf</h2>
-          <p class="section-dek">Smaller tools and the setup I work in every day.</p>
-        </div>
-      </header>
-      <div class="shelf">
-        {{- range .}}
-{{template "work-shelf-item" .}}
-        {{- end}}
-      </div>
-{{template "work-list-end" $}}
-    </div>
-  </section>
-{{- end}}
-{{- if not .Projects}}{{with .Config.GitHubURL}}
-
-  <section class="section" style="padding-top:0" aria-label="Projects">
-    <div class="wrap">
-{{template "work-list-end" $}}
-    </div>
-  </section>
-{{- end}}{{end}}
+  {{- if .Projects}}
+  <div class="projects">
+    {{- range .FeaturedProjects}}{{template "projects-item" .}}{{end}}
+    {{- range .OtherProjects}}{{template "projects-item" .}}{{end}}
+  </div>
+  {{- end}}
+  {{- with .Config.GitHubURL}}
+  <p class="more">Everything{{if $.Projects}} else{{end}} lives on <a href="{{.}}" rel="me">GitHub</a>.</p>
+  {{- end}}
 {{end}}
+
+{{define "projects-item"}}
+    <article class="project" id="{{.ID}}" aria-labelledby="p-{{.ID}}">
+      <h2 id="p-{{.ID}}" class="project-title">{{.Title}}</h2>
+      {{- with .Blurb}}
+      <p class="project-desc">{{.}}</p>
+      {{- end}}
+      {{- with .TechStack}}
+      <p class="stack"><span class="sr-only">Stack: </span>{{join . ", "}}</p>
+      {{- end}}
+      {{- template "work-install" .}}
+      {{- template "work-links" .}}
+    </article>
+{{- end}}

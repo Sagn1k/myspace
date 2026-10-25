@@ -1,7 +1,7 @@
 {{/*
-  Writing-index partials: the markup the article lists share (the writing
-  index, a tag's page and the search results). Every partial is parsed into
-  every page, so each name here starts with "index-".
+  Writing-index partials: the markup the article lists share (home, the
+  writing index, a tag's page, the search results and keep reading). Every
+  partial is parsed into every page, so each name here starts with "index-".
 
     index-articles    int -> "1 article" / "4 articles"
     index-count       dict N One Many -> "1 result" / "4 results"
@@ -9,17 +9,14 @@
                       Query: the value to echo ("" for none). Posts: the
                       count in the placeholder. Status: the input is
                       described by #filter-status. Autofocus.
-    index-tagline     dict Tags Current -> ul.tagline.over, or nothing when
-                      there are no tags; Current is the tag whose page this
-                      is ("" elsewhere) and gets aria-current="page".
-    index-entry       dict Post Layout Filter Current -> li.entry.row-link
+    index-entry       dict Post Layout Desc Rel -> li.entry.row-link
                       Layout: the date layout ("2 Jan" under a year heading,
-                      "2 Jan 2006" otherwise). Filter: add data-tags for
-                      main.js's in-place filter (the writing index only).
+                      "2 Jan 2006" otherwise). Desc: show the description.
+                      Rel: a KeepItem's Dir or ""; only "prev" and "next"
+                      become a rel attribute.
     index-hit         models.SearchHit -> li.entry.row-link with the
-                      highlighted title and snippet; never data-tags, or
-                      main.js would re-filter the server's results.
-    index-year-group  models.YearGroup -> section.year-group[data-year-group]
+                      highlighted title and snippet (else the description)
+    index-year-group  models.YearGroup -> section.year-group
 
   Every key a dict-taking partial reads must be passed (use "" or false).
 */}}
@@ -29,59 +26,39 @@
 {{define "index-count"}}{{.N}} {{if eq .N 1}}{{.One}}{{else}}{{.Many}}{{end}}{{end}}
 
 {{define "index-search"}}<form class="search" action="/search" method="get" role="search">
-          {{template "icon-search"}}
-          <label class="sr-only" for="q">Search articles</label>
-          <input id="q" name="q" type="search"{{with .Query}} value="{{.}}"{{end}} placeholder="Search {{template "index-articles" .Posts}}…" autocomplete="off"{{if .Status}} aria-describedby="filter-status"{{end}}{{if .Autofocus}} autofocus{{end}}>
-          <kbd aria-hidden="true">↵</kbd>
-        </form>{{end}}
-
-{{define "index-tagline"}}{{$current := .Current}}{{with .Tags}}<ul class="tagline over" aria-label="Tags">{{range .}}<li><a href="/tags/{{pathEscape .}}"{{if eq . $current}} aria-current="page"{{end}}>{{.}}</a></li>{{end}}</ul>{{end}}{{end}}
+  <label class="sr-only" for="q">Search articles</label>
+  <input id="q" name="q" type="search"{{with .Query}} value="{{.}}"{{end}} placeholder="Search {{template "index-articles" .Posts}}…" autocomplete="off"{{if .Status}} aria-describedby="filter-status"{{end}}{{if .Autofocus}} autofocus{{end}}>
+</form>{{end}}
 
 {{define "index-entry"}}{{$p := .Post}}
-          <li class="entry row-link"{{if .Filter}} data-tags="{{join $p.Tags " "}}"{{end}}>
-            <p class="entry-date meta"><time datetime="{{$p.Date.Format "2006-01-02"}}">{{$p.Date.Format .Layout}}</time><span class="rt-inline">&ensp;·&ensp;{{$p.ReadingTime}} min</span></p>
-            <div>
-              <h3><a class="stretch u" href="/blog/{{$p.Slug}}">{{$p.Title}}</a></h3>
-              {{- with $p.Description}}
-              <p>{{.}}</p>
-              {{- end}}
-              {{- with $p.Tags}}
-              {{template "index-tagline" dict "Tags" . "Current" $.Current}}
-              {{- end}}
-            </div>
-            <p class="entry-rt meta">{{$p.ReadingTime}} min read</p>
-          </li>
+  <li class="entry row-link">
+    <h3 class="entry-title"><a class="stretch" href="/blog/{{$p.Slug}}"{{if or (eq .Rel "prev") (eq .Rel "next")}} rel="{{.Rel}}"{{end}}>{{$p.Title}}</a></h3>
+    {{- if .Desc}}{{with $p.Description}}
+    <p class="entry-desc">{{.}}</p>
+    {{- end}}{{end}}
+    <p class="entry-meta"><time datetime="{{$p.Date.Format "2006-01-02"}}">{{$p.Date.Format .Layout}}</time></p>
+  </li>
 {{- end}}
 
 {{define "index-hit"}}{{$p := .Post}}
-          <li class="entry row-link">
-            <p class="entry-date meta"><time datetime="{{$p.Date.Format "2006-01-02"}}">{{$p.Date.Format "2 Jan 2006"}}</time><span class="rt-inline">&ensp;·&ensp;{{$p.ReadingTime}} min</span></p>
-            <div>
-              <h3><a class="stretch u" href="/blog/{{$p.Slug}}">{{.TitleHTML}}</a></h3>
-              {{- with .Snippet}}
-              <p class="snippet">{{.}}</p>
-              {{- else}}{{with $p.Description}}
-              <p>{{.}}</p>
-              {{- end}}{{end}}
-            </div>
-            <p class="entry-rt meta">{{$p.ReadingTime}} min read</p>
-          </li>
+  <li class="entry row-link">
+    <h3 class="entry-title"><a class="stretch" href="/blog/{{$p.Slug}}">{{.TitleHTML}}</a></h3>
+    {{- with .Snippet}}
+    <p class="entry-desc">{{.}}</p>
+    {{- else}}{{with $p.Description}}
+    <p class="entry-desc">{{.}}</p>
+    {{- end}}{{end}}
+    <p class="entry-meta"><time datetime="{{$p.Date.Format "2006-01-02"}}">{{$p.Date.Format "2 Jan 2006"}}</time></p>
+  </li>
 {{- end}}
 
 {{define "index-year-group"}}
-    <section class="year-group grid" aria-labelledby="y{{.Year}}" data-year-group>
-      <div class="year-mark c-rail">
-        <div class="inner">
-          <h2 id="y{{.Year}}" class="year">{{.Year}}</h2>
-          <p class="year-count meta" data-count>{{template "index-articles" len .Posts}}</p>
-        </div>
-      </div>
-      <div class="c-main">
-        <ol class="entries">
-          {{- range .Posts}}
-          {{- template "index-entry" dict "Post" . "Layout" "2 Jan" "Filter" true "Current" ""}}
-          {{- end}}
-        </ol>
-      </div>
-    </section>
+  <section class="year-group" aria-labelledby="y{{.Year}}">
+    <h2 id="y{{.Year}}" class="year">{{.Year}}</h2>
+    <ol class="entries">
+      {{- range .Posts}}
+      {{- template "index-entry" dict "Post" . "Layout" "2 Jan" "Desc" true "Rel" ""}}
+      {{- end}}
+    </ol>
+  </section>
 {{- end}}

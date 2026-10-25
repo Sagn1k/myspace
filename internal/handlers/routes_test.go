@@ -98,7 +98,8 @@ func do(t *testing.T, app *fiber.App, method, target string) *http.Response {
 }
 
 // Tag links are one path segment each, so a tag holding "/", "#", "?" or a
-// space still reaches its own page from every list that links it.
+// space still reaches its own page from every list that links it: the topic
+// index and the article's "Filed under" line.
 func TestTagLinksEscapeTheirPath(t *testing.T) {
 	contentDir := t.TempDir()
 	post := "---\ntitle: \"Odd Tags\"\ndate: 2026-03-01\ntags: [\"ci/cd\", \"c#\", \"a?b\", \"web dev\"]\n---\n\n## One\n\nBody.\n"
@@ -110,7 +111,7 @@ func TestTagLinksEscapeTheirPath(t *testing.T) {
 	app := newApp(newSite(t, contentDir, realProjects, realTemplates, config).h)
 
 	tags := map[string]string{"ci/cd": "/tags/ci%2Fcd", "c#": "/tags/c%23", "a?b": "/tags/a%3Fb", "web dev": "/tags/web%20dev"}
-	for _, page := range []string{"/", "/blog", "/tags", "/blog/odd-tags", "/tags/c%23"} {
+	for _, page := range []string{"/tags", "/blog/odd-tags"} {
 		body := get(t, app, page).body
 		for tag, href := range tags {
 			if !strings.Contains(body, `href="`+href+`"`) {

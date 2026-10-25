@@ -1,7 +1,13 @@
 {{/*
-  Contact (SPEC 6.6): the contact band, set on paper as the page itself
-  (partials/contact.html, "Page" variant, which carries the page's h1).
+  Contact: the h1, the invitation, the email address with a Copy button, and
+  the note. Every address comes from .Config; the other channels are in the
+  footer.
 */}}
 {{define "content"}}
-{{template "contact-band" dict "Config" .Config "Page" true}}
+  <h1 class="page-title">Let’s build something <em>together.</em></h1>
+  <p class="page-dek">I’m always open to interesting conversations, collaboration opportunities, or just a friendly hello. Whether you have a project idea, need help with backend architecture, or want to discuss distributed systems over coffee, I’d love to hear from you.</p>
+  {{- with .Config.Email}}
+  <p class="email-line"><a class="email" href="mailto:{{.}}">{{.}}</a> <button class="copy-btn" type="button" data-copy="{{.}}" data-copy-label="Email address copied" aria-label="Copy email address">Copy</button></p>
+  {{- end}}
+  <p class="contact-note">Particularly interested in open-source collaborations, technical writing opportunities, and challenging engineering&nbsp;problems.</p>
 {{end}}

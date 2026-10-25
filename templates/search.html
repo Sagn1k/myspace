@@ -1,62 +1,24 @@
 {{define "content"}}
-  {{- /* $q echoes the query in the title, status and empty state: at most 60
-         characters (rune-safe), so a pasted essay cannot fill the page. The
-         input keeps the whole query. */}}
+  {{- /* $q echoes the query in the status and empty state: at most 60 characters
+         (rune-safe). The input keeps the whole query. */}}
   {{- $q := printf "%.60s" .Query}}{{if ne $q .Query}}{{$q = printf "%s…" $q}}{{end}}
   <header class="page-head">
-    <div class="wrap grid">
-      <div class="c-main rise" style="--d:0">
-        <p class="page-kicker label"><span class="label--accent">Search</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>Full text</p>
-        {{- if .Query}}
-        <h1 class="page-title page-title--echo"><span class="sr-only">Results for </span>“{{$q}}”</h1>
-        {{- else}}
-        <h1 class="page-title">Search</h1>
-        <p class="page-dek">Search every article by title, tags and text.</p>
-        {{- end}}
-      </div>
-      <div class="c-rail rise" style="--d:1">
-        <dl class="page-facts">
-          {{- if .Query}}
-          <div><dt class="label">Results</dt><dd>{{.ResultCount}}</dd></div>
-          <div><dt class="label">Searched</dt><dd>{{template "index-articles" .PostCount}}</dd></div>
-          {{- else}}
-          <div><dt class="label">Articles</dt><dd>{{.PostCount}}</dd></div>
-          <div class="facts-feed"><dt class="label">Browse</dt><dd><a class="meta-link" href="/blog">All writing <span class="arr" aria-hidden="true">→</span></a></dd></div>
-          {{- end}}
-        </dl>
-      </div>
-    </div>
+    <h1 class="page-title">Search</h1>
   </header>
-
-  <div class="wrap">
-    <div class="filters grid">
-      <p class="label c-rail">{{if .Query}}Search again{{else}}Find an article{{end}}</p>
-      <div class="c-main">
-        {{template "index-search" dict "Query" .Query "Posts" .PostCount "Status" (ne .Query "") "Autofocus" (eq .Query "")}}
-        {{- if .Query}}
-        <p id="filter-status" class="filter-status meta" role="status">{{template "index-count" dict "N" .ResultCount "One" "result" "Many" "results"}} for “{{$q}}”</p>
-        {{- else}}
-        <p class="filter-status meta"><a class="meta-link" href="/blog">All writing <span class="arr" aria-hidden="true">→</span></a>&emsp;<a class="meta-link" href="/tags">All topics <span class="arr" aria-hidden="true">→</span></a></p>
-        {{- end}}
-      </div>
-    </div>
-    {{- if .Results}}
-    <section class="year-group grid" aria-labelledby="results-title">
-      <div class="year-mark c-rail"><div class="inner"><h2 id="results-title" class="label"><span class="sr-only">Results, </span>Best match first</h2></div></div>
-      <div class="c-main">
-        <ol class="entries">
-          {{- range .Results}}
-          {{- template "index-hit" .}}
-          {{- end}}
-        </ol>
-      </div>
-    </section>
-    {{- else if .Query}}
-    <div class="grid">
-      <div class="c-main">
-        <p class="empty">Nothing matches “{{$q}}”. Try a broader term, <a href="/tags">browse all topics</a> or <a href="/blog">the writing index</a>.</p>
-      </div>
-    </div>
-    {{- end}}
-  </div>
+  {{template "index-search" dict "Query" .Query "Posts" .PostCount "Status" (ne .Query "") "Autofocus" (eq .Query "")}}
+  {{- if .Query}}
+  <p id="filter-status" class="status" role="status">{{template "index-count" dict "N" .ResultCount "One" "result" "Many" "results"}} for “{{$q}}”</p>
+  {{- end}}
+  {{- if .Results}}
+  <section aria-labelledby="results-title">
+    <h2 id="results-title" class="sr-only">Results</h2>
+    <ol class="entries">
+      {{- range .Results}}
+      {{- template "index-hit" .}}
+      {{- end}}
+    </ol>
+  </section>
+  {{- else if .Query}}
+  <p class="empty">Nothing matches “{{$q}}”. Try a broader term, <a href="/tags">browse all topics</a> or <a href="/blog">the writing index</a>.</p>
+  {{- end}}
 {{end}}

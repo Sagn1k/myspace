@@ -1,150 +1,55 @@
 {{/*
-  Home (SPEC 6.1): cover, 01 Focus, pull quote, 02 Work, 03 Writing, 04 Contact.
-  Departments without data are left out and the rest renumber in reading
-  order: no projects drops Work (and the "Selected work" button), no posts
-  drops Writing, no post with a pullquote drops the quote.
+  Home: intro, then Projects (up to three: featured first, then the rest) and
+  Writing (the latest three). A section without data is left out.
 */}}
 {{define "content"}}
 {{- $hasWork := or .FeaturedProjects .OtherProjects}}
-{{- $yrs := .Config.YearsExperience}}{{$yrsNum := ""}}{{with split $yrs "+"}}{{$yrsNum = index . 0}}{{end}}
-{{- $n := 1}}
   <section class="hero" aria-labelledby="hero-title">
-    <div class="wrap grid">
-      <p class="hero-role c-full rise" style="--d:0"><b>{{.Config.Author}}</b><span class="sep" aria-hidden="true"></span><span>Backend &amp; distributed systems engineer</span></p>
-      <h1 id="hero-title" class="hero-title c-full rise" style="--d:1">I build the <em class="redline">invisible plumbing</em> that powers modern applications.</h1>
-      <div class="hero-body rise" style="--d:2">
-        <p class="hero-dek">{{with $yrs}}{{.}} years designing{{else}}Designing{{end}} resilient, high-throughput services, distributed architectures and the developer tools around them, mostly in Go. I write about what I learn along the way.</p>
-        <div class="hero-cta">
-          {{- if $hasWork}}
-          <a class="btn btn--solid" href="#work">Selected work <span class="arr" aria-hidden="true">→</span></a>
-          <a class="btn btn--line" href="/blog">Read the writing</a>
-          {{- else}}
-          <a class="btn btn--solid" href="/blog">Read the writing <span class="arr" aria-hidden="true">→</span></a>
-          {{- end}}
-        </div>
-        {{- with .Config.Email}}
-        <p class="hero-mail">
-          <span>Or write to <a href="mailto:{{.}}">{{.}}</a></span>
-          <button class="copy-inline" type="button" data-copy="{{.}}" data-copy-label="Email address copied" aria-label="Copy email address">
-            {{- template "icon-copy"}}<span class="copy-label">Copy</span>
-          </button>
-        </p>
-        {{- end}}
-      </div>
-      <aside class="sheet rise" style="--d:3" aria-labelledby="glance-title">
-        <div class="sheet-head">
-          <p id="glance-title" class="label label--ink">At a glance</p>
-          <a class="meta-link" href="/about">More about me <span class="arr" aria-hidden="true">→</span></a>
-        </div>
-        <dl class="facts">
-          {{- if $yrsNum}}
-          <div class="fact"><dt class="label">Years in software engineering</dt><dd class="fact-num">{{$yrsNum}}{{if ne $yrsNum $yrs}}<span class="plus">+</span>{{end}}</dd></div>
-          {{- end}}
-          <div class="fact{{if $yrsNum}} fact--col2{{end}}"><dt class="label">Primary language</dt><dd class="fact-num">Go</dd></div>
-          {{- with .LatestBlogs}}{{with index . 0}}
-          <div class="fact fact--wide">
-            <dt class="label">Latest writing&ensp;·&ensp;<time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time></dt>
-            <dd class="fact-latest"><a href="/blog/{{.Slug}}">{{with split .Title ": "}}<span class="title">{{index . 0}} <span class="arr" aria-hidden="true">→</span></span>{{if gt (len .) 1}}<span class="sub">{{join (slice . 1) ": "}}</span>{{end}}{{end}}</a></dd>
-          </div>
-          {{- end}}{{end}}
-        </dl>
-      </aside>
-    </div>
+    <p class="hero-role">Backend &amp; distributed systems engineer</p>
+    <h1 id="hero-title" class="hero-title">I build the <em class="redline">invisible plumbing</em> that powers modern applications.</h1>
+    <p class="hero-intro">{{with .Config.YearsExperience}}{{.}} years designing{{else}}Designing{{end}} resilient, high-throughput services, distributed architectures and the developer tools around them, mostly in Go. I write about what I learn along the way.</p>
+    {{- with .Config.Email}}
+    <p class="hero-mail">Write to <a href="mailto:{{.}}">{{.}}</a></p>
+    {{- end}}
   </section>
-{{template "focus-section" dict "N" "01" "Dek" true}}
-{{- with .PullquotePost}}
-
-  <section class="quote" aria-label="From the writing">
-    <div class="wrap grid">
-      <figure>
-        <blockquote cite="/blog/{{.Slug}}"><p><span class="qm">“</span>{{.Pullquote}}<span class="qm">”</span></p></blockquote>
-        <figcaption><a class="u" href="/blog/{{.Slug}}">From <i>{{.Title}}</i> <span class="arr" aria-hidden="true">→</span></a></figcaption>
-      </figure>
-    </div>
-  </section>
-{{- end}}
-{{- if $hasWork}}{{$n = add $n 1}}
-
+{{- if $hasWork}}{{$shown := 0}}
   <section class="section" id="work" aria-labelledby="work-title">
-    <div class="wrap">
-      <header class="section-head grid">
-        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Work</p>
-        <div class="c-main section-title-row">
-          <h2 id="work-title" class="section-title">Selected work</h2>
-          <a class="more" href="/projects">{{if eq .ProjectCount 1}}The project{{else}}All {{.ProjectCount}} projects{{end}} <span class="arr" aria-hidden="true">→</span></a>
-        </div>
-      </header>
-      {{- with .FeaturedProjects}}
-{{template "work-lead" dict "P" (index . 0) "Anchor" false}}
-      {{- end}}
-      {{- if gt (len .FeaturedProjects) 1}}
-
-      <div class="work-row">
-        {{- range $i, $p := .FeaturedProjects}}{{if and (ge $i 1) (le $i 2)}}
-{{template "work-proj" dict "P" $p "Anchor" false}}
-        {{- end}}{{end}}
-      </div>
-      {{- end}}
-      {{- if or (gt (len .FeaturedProjects) 3) .OtherProjects}}
-
-      <div class="also">
-        <p><span class="label">{{if .FeaturedProjects}}Also on the shelf{{else}}On the shelf{{end}}</span>
-          {{- $sep := false}}
-          {{- range $i, $p := .FeaturedProjects}}{{if ge $i 3}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{$p.Title}}</b>{{with $p.RunInSummary}}, {{.}}{{end}}{{$sep = true}}{{end}}{{end}}
-          {{- range .OtherProjects}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{.Title}}</b>{{with .RunInSummary}}, {{.}}{{end}}{{$sep = true}}{{end -}}
-        </p>
-        <a class="more" href="/projects">See all projects <span class="arr" aria-hidden="true">→</span></a>
-      </div>
-      {{- end}}
-    </div>
+    <h2 id="work-title" class="section-title">Projects</h2>
+    <ol class="entries">
+      {{- range .FeaturedProjects}}{{if lt $shown 3}}{{$shown = add $shown 1}}
+      {{- template "home-project" .}}
+      {{- end}}{{end}}
+      {{- range .OtherProjects}}{{if lt $shown 3}}{{$shown = add $shown 1}}
+      {{- template "home-project" .}}
+      {{- end}}{{end}}
+    </ol>
+    {{- if gt .ProjectCount $shown}}
+    <p class="more"><a href="/projects">All projects</a></p>
+    {{- end}}
   </section>
 {{- end}}
-{{- with .LatestBlogs}}{{$n = add $n 1}}
-
+{{- with .LatestBlogs}}
   <section class="section" id="writing" aria-labelledby="writing-title">
-    <div class="wrap">
-      <header class="section-head grid">
-        <p class="section-mark label c-rail"><span class="n">0{{$n}}</span><span class="sl" aria-hidden="true">/</span>Writing</p>
-        <div class="c-main section-title-row">
-          <h2 id="writing-title" class="section-title">Recent writing</h2>
-          <a class="more" href="/blog">{{if eq $.PostCount 1}}The article{{else}}All {{$.PostCount}} articles{{end}} <span class="arr" aria-hidden="true">→</span></a>
-        </div>
-      </header>
-      <div class="writing">
-        {{- with index . 0}}
-        <article class="lead-story row-link">
-          <p class="meta dots"><span class="label label--accent">Latest</span><time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time><span>{{.ReadingTime}} min read</span></p>
-          <h3><a class="stretch u" href="/blog/{{.Slug}}">{{.Title}}</a></h3>
-          {{- with .Description}}
-          <p>{{.}}</p>
-          {{- end}}
-          <div class="row">
-            {{- with .Tags}}
-            <ul class="tagline over" aria-label="Tags">
-              {{range $i, $t := .}}{{if lt $i 4}}<li><a href="/tags/{{pathEscape $t}}">{{$t}}</a></li>{{end}}{{end}}
-            </ul>
-            {{- end}}
-            <span class="more" aria-hidden="true">Read the article <span class="arr">→</span></span>
-          </div>
-        </article>
-        {{- end}}
-        <div class="story-list">
-          {{- range $i, $b := .}}{{if $i}}
-          <article class="story row-link">
-            <p class="meta dots"><time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time><span>{{.ReadingTime}} min read</span></p>
-            <h3><a class="stretch u" href="/blog/{{.Slug}}">{{.Title}}</a></h3>
-          </article>
-          {{- end}}{{end}}
-          <div class="links">
-            <a class="more" href="/blog">Browse the index <span class="arr" aria-hidden="true">→</span></a>
-            <a class="more" href="/rss.xml">RSS <span class="arr" aria-hidden="true">→</span></a>
-          </div>
-        </div>
-      </div>
-    </div>
+    <h2 id="writing-title" class="section-title">Writing</h2>
+    <ol class="entries">
+      {{- range .}}
+      {{- template "index-entry" dict "Post" . "Layout" "2 Jan 2006" "Desc" false "Rel" ""}}
+      {{- end}}
+    </ol>
+    {{- if gt $.PostCount (len .)}}
+    <p class="more"><a href="/blog">All writing</a></p>
+    {{- end}}
   </section>
 {{- end}}
-{{- $n = add $n 1}}
-
-{{template "contact-band" dict "Config" .Config "N" (printf "0%d" $n)}}
 {{end}}
+
+{{- /* ShortSummary drops the full stop that ends a first sentence; the row
+       sets one back unless the summary already ends a sentence. */}}
+{{define "home-project"}}
+      <li class="entry row-link">
+        <h3 class="entry-title"><a class="stretch" href="/projects#{{.ID}}">{{.Title}}</a></h3>
+        {{- with .ShortSummary}}
+        <p class="entry-desc">{{.}}{{if not (eq (slice . (add (len .) -1)) "." "!" "?")}}.{{end}}</p>
+        {{- end}}
+      </li>
+{{- end}}

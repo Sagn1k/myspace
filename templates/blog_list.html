@@ -1,68 +1,14 @@
 {{define "content"}}
   <header class="page-head">
-    <div class="wrap grid">
-      <div class="c-main rise" style="--d:0">
-        <p class="page-kicker label"><span class="label--accent">Index</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>Articles &amp; notes</p>
-        <h1 class="page-title">Writing</h1>
-        <p class="page-dek">Notes on backend systems, distributed architecture, databases and the tools around them, written to share what I learn along the way.</p>
-      </div>
-      <div class="c-rail rise" style="--d:1">
-        <dl class="page-facts">
-          <div><dt class="label">Articles</dt><dd>{{len .Blogs}}</dd></div>
-          {{- with .Blogs}}{{with index . 0}}
-          <div><dt class="label">Latest</dt><dd><time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "2 Jan 2006"}}</time></dd></div>
-          {{- end}}{{end}}
-          <div class="facts-feed"><dt class="label">Subscribe</dt><dd><a class="meta-link" href="/rss.xml">RSS feed <span class="arr" aria-hidden="true">→</span></a></dd></div>
-        </dl>
-      </div>
-    </div>
+    <h1 class="page-title">Writing</h1>
+    <p class="page-dek">Notes on backend systems, distributed architecture, databases and the tools around them.</p>
   </header>
-
-  <div class="wrap">
-    {{- if .Blogs}}
-    <div class="filters grid">
-      <p class="label c-rail">Search &amp; filter</p>
-      <div class="c-main">
-        {{template "index-search" dict "Query" "" "Posts" (len .Blogs) "Status" true "Autofocus" false}}
-        {{- with .Tags}}
-        <div class="topics">
-          <div class="tchips" role="group" aria-label="Filter by topic">
-            <button class="tchip" type="button" data-tag="all" aria-pressed="true">All <span class="c">{{len $.Blogs}}<span class="sr-only"> articles</span></span></button>
-            {{- range $i, $t := .}}{{if lt $i 8}}
-            <button class="tchip" type="button" data-tag="{{$t.Name}}" aria-pressed="false">{{$t.Name}} <span class="c">{{$t.Count}}<span class="sr-only"> {{if eq $t.Count 1}}article{{else}}articles{{end}}</span></span></button>
-            {{- end}}{{end}}
-          </div>
-          <a class="meta-link" href="/tags">All topics <span class="arr" aria-hidden="true">→</span></a>
-        </div>
-        {{- end}}
-        <p id="filter-status" class="filter-status meta" role="status" aria-live="polite">{{if eq (len .Blogs) 1}}Showing 1 article{{else}}Showing all {{len .Blogs}} articles{{end}}</p>
-      </div>
-    </div>
-    {{range .Years}}{{template "index-year-group" .}}{{end}}
-    {{- else}}
-    <section class="year-group grid" aria-labelledby="none-title" style="margin-top:0">
-      <div class="year-mark c-rail"><div class="inner"><h2 id="none-title" class="label">Articles</h2></div></div>
-      <div class="c-main"><p class="empty">Nothing published yet.</p></div>
-    </section>
-    {{- end}}
-
-    <div class="grid">
-      <div class="c-main">
-        {{- if .Blogs}}
-        <p class="empty" data-empty hidden>Nothing matches that yet. Try another topic, <a href="/tags">browse all topics</a>, or <a href="/search" data-search-link>search the full text</a>.</p>
-        {{- end}}
-        <aside class="list-end" aria-labelledby="feed-title">
-          {{- with .Blogs}}{{with index . (add (len .) -1)}}
-          <p class="label">End of index&ensp;·&ensp;{{template "index-articles" len $.Blogs}} since {{.Date.Format "January 2006"}}</p>
-          {{- end}}{{end}}
-          <h2 id="feed-title">Follow along by RSS</h2>
-          <div class="feed">
-            <code>{{.Config.BaseURL}}/rss.xml</code>
-            <button class="btn btn--sm" type="button" data-copy="{{.Config.BaseURL}}/rss.xml" data-copy-label="Feed URL copied" aria-label="Copy feed URL"><span class="copy-label">Copy feed URL</span></button>
-            <a class="btn btn--sm" href="/rss.xml">Open feed <span class="arr" aria-hidden="true">→</span></a>
-          </div>
-        </aside>
-      </div>
-    </div>
-  </div>
+  {{- range .Years}}
+  {{- template "index-year-group" .}}
+  {{- else}}
+  <p class="empty">Nothing published yet.</p>
+  {{- end}}
+  {{- if .Blogs}}
+  <p class="more"><a href="/tags">Browse all topics</a></p>
+  {{- end}}
 {{end}}

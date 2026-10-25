@@ -1,7 +1,14 @@
 /* main.js: the site's only script (static/js/main.js, loaded with defer).
-   Progressive enhancement throughout: every module looks for its markup and
-   returns early, so the same file serves every page and nothing breaks
-   without it. No dependencies, no build step. */
+   Every module looks for its markup and returns early, so the same file
+   serves every page and the site works without it. No dependencies, no
+   build step. The modules, in order:
+   - smooth in-page scrolling once the page has loaded;
+   - the announcer (one polite live region) and the clipboard helpers;
+   - theme: the toggle, following the OS until the reader picks;
+   - the search button's shortcut title (⌘K or Ctrl K);
+   - Copy buttons: [data-copy] (contact, install) and code blocks;
+   - the command palette (⌘K / Ctrl K): a native <dialog> with a combobox;
+   - article headings: each h2/h3 becomes a self-link that copies itself. */
 (function () {
   'use strict';
   var doc = document, root = doc.documentElement;
@@ -38,7 +45,10 @@
     var ta = doc.createElement('textarea'), prev = doc.activeElement, ok = false;
     ta.value = text; ta.setAttribute('readonly', '');
     ta.style.cssText = 'position:fixed;top:-999px;opacity:0';
-    doc.body.appendChild(ta); ta.select();
+    /* inside an open modal dialog (the palette), since the page behind it is
+       inert: a textarea there could not take focus, and the copy would run
+       against the dialog's input and still report success */
+    ($('dialog[open]') || doc.body).appendChild(ta); ta.select();
     try { ok = doc.execCommand('copy'); } catch (e) {}
     ta.remove();
     /* selecting the textarea took focus: hand it back to the control */
@@ -56,13 +66,12 @@
   /* Flip a control's visible label for 1.6s and announce the result; a
      failed copy says so instead of claiming success. */
   function confirmCopy(btn, msg, failed) {
-    var l = $('.copy-label', btn) || btn;
-    if (!l.hasAttribute('data-orig')) l.setAttribute('data-orig', l.textContent);
-    l.textContent = failed ? COPY_FAILED : 'Copied';
+    if (!btn.hasAttribute('data-orig')) btn.setAttribute('data-orig', btn.textContent);
+    btn.textContent = failed ? COPY_FAILED : 'Copied';
     if (failed) btn.removeAttribute('data-copied'); else btn.setAttribute('data-copied', '');
     announce(failed ? COPY_FAILED : (msg || 'Copied to clipboard'));
     clearTimeout(btn._t);
-    btn._t = setTimeout(function () { l.textContent = l.getAttribute('data-orig'); btn.removeAttribute('data-copied'); }, 1600);
+    btn._t = setTimeout(function () { btn.textContent = btn.getAttribute('data-orig'); btn.removeAttribute('data-copied'); }, 1600);
   }
   function copyFrom(btn, text, msg) {
     copyText(text).then(function () { confirmCopy(btn, msg); }, function () { confirmCopy(btn, msg, true); });
@@ -103,51 +112,22 @@
   /* ---- Shortcut hint: ⌘K on Apple platforms, Ctrl K elsewhere --------- */
   /* case-insensitive: Chromium's userAgentData.platform is "macOS" */
   var isMac = /mac|iphone|ipad|ipod/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent);
-  if (!isMac) $$('kbd[data-kbd="mod-k"]').forEach(function (k) { k.textContent = 'Ctrl K'; });
   $$('[data-open-palette]').forEach(function (b) { b.title = 'Search (' + (isMac ? '⌘K' : 'Ctrl K') + ')'; });
 
   /* ---- Copy buttons ------------------------------------------------------ */
   $$('[data-copy]').forEach(function (b) {
     b.addEventListener('click', function () { copyFrom(b, b.getAttribute('data-copy'), b.getAttribute('data-copy-label')); });
   });
-  $$('[data-copy-url]').forEach(function (b) {
-    b.addEventListener('click', function () { copyFrom(b, location.origin + location.pathname, 'Link to this article copied'); });
-  });
 
-  /* ---- Code listings: line count + copy (server renders the button hidden) */
+  /* ---- Code blocks: copy (the server renders the button hidden) -------- */
   $$('.code-block').forEach(function (block, i) {
-    var pre = $('pre', block), lang = $('.code-block__lang', block), btn = $('.code-block__copy', block);
+    var pre = $('pre', block), btn = $('.code-block__copy', block);
     if (!pre) return;
-    var text = pre.textContent.replace(/\n$/, '');
-    var n = text.split('\n').length;
-    if (lang) {
-      var s = doc.createElement('span');
-      s.className = 'code-block__lines';
-      s.textContent = n + (n === 1 ? ' line' : ' lines');
-      lang.parentNode.insertBefore(s, lang.nextSibling);
-    }
     if (btn) {
       btn.hidden = false;
-      btn.setAttribute('aria-label', 'Copy listing ' + (i + 1));
-      btn.addEventListener('click', function () { copyFrom(btn, pre.textContent.replace(/\n$/, ''), 'Listing ' + (i + 1) + ' copied'); });
+      btn.setAttribute('aria-label', 'Copy code block ' + (i + 1));
+      btn.addEventListener('click', function () { copyFrom(btn, pre.textContent.replace(/\n$/, ''), 'Code block ' + (i + 1) + ' copied'); });
     }
-  });
-
-  /* ---- Horizontal scrollers: edge fades only where there is more ------- */
-  $$('.tchips').forEach(function (el) {
-    function edges() {
-      el.toggleAttribute('data-scrolled', el.scrollLeft > 4);
-      el.toggleAttribute('data-at-end', el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
-    }
-    el.addEventListener('scroll', edges, { passive: true });
-    window.addEventListener('resize', edges);
-    edges();
-    /* Chrome leaves a partly visible chip where it is when it takes focus,
-       which can be under a fade: bring it fully in (scroll-padding keeps
-       it clear of both fades) */
-    el.addEventListener('focusin', function (e) {
-      if (e.target !== el && e.target.scrollIntoView) e.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    });
   });
 
   /* ---- Command palette (Cmd/Ctrl+K): native <dialog> + combobox ------- */
@@ -207,8 +187,7 @@
           }
           if (gp && data.projects) {
             gp.innerHTML = gp.firstElementChild.outerHTML + data.projects.map(function (p, i) {
-              /* the project's short summary (a sentence; CSS ends it in an ellipsis) */
-              return '<a id="po-r' + i + '" class="palette-item" role="option" tabindex="-1" href="/projects#' + esc(p.id) + '" data-keywords="' + esc((p.tech || []).join(' ')) + '">' + esc(p.title) + ' <span class="meta meta--clip">' + esc(p.summary || (p.tech || [])[0] || '') + '</span></a>';
+              return '<a id="po-r' + i + '" class="palette-item" role="option" tabindex="-1" href="/projects#' + esc(p.id) + '" data-keywords="' + esc((p.tech || []).concat(p.summary ? [p.summary] : []).join(' ')) + '">' + esc(p.title) + '</a>';
             }).join('');
           }
           filter();
@@ -278,15 +257,11 @@
     });
   }
 
-  /* ---- Article: permalinks, contents, progress ------------------------- */
+  /* ---- Article: heading self-links ---- */
   var prose = $('.prose');
   if (prose) {
     var heads = $$(':scope > h2[id], :scope > h3[id]', prose);
-    var h2n = 0, h3n = 0;
-    var numberOf = {};
     heads.forEach(function (h) {
-      if (h.tagName === 'H2') { h2n++; h3n = 0; numberOf[h.id] = (h2n < 10 ? '0' : '') + h2n; }
-      else { h3n++; numberOf[h.id] = (h2n < 10 ? '0' : '') + h2n + '.' + h3n; }
       /* the heading text becomes a self-link; clicking also copies it */
       if (!$('.hlink', h)) {
         var a = doc.createElement('a');
@@ -298,98 +273,11 @@
       $('.hlink', h).addEventListener('click', function () {
         copyText(location.origin + location.pathname + '#' + h.id).then(function () {
           h.setAttribute('data-copied', '');
-          announce('Link to section ' + numberOf[h.id] + ' copied');
+          announce('Link to this section copied');
           clearTimeout(h._t);
           h._t = setTimeout(function () { h.removeAttribute('data-copied'); }, 1600);
         }, function () { announce(COPY_FAILED); });
       });
     });
-
-    var bar = $('.progress'), toc = $('.toc'), pct = $('[data-progress-pct]');
-    var now = $('[data-toc-now]'), tocM = $('.toc-m');
-    var links = $$('.toc-list a[href^="#"]');
-    var byId = {};
-    links.forEach(function (a) { var id = a.getAttribute('href').slice(1); (byId[id] = byId[id] || []).push(a); });
-    var order = heads.filter(function (h) { return byId[h.id]; });
-    var idle = now ? now.textContent : '';
-    var last = null, ticking = false;
-    var update = function () {
-      ticking = false;
-      var r = prose.getBoundingClientRect(), vh = window.innerHeight;
-      var p = Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - vh * 0.6)));
-      if (bar) bar.style.setProperty('--p', p.toFixed(4));
-      if (toc) toc.style.setProperty('--p', p.toFixed(4));
-      if (pct) pct.textContent = Math.round(p * 100) + '%';
-      var cur = -1;
-      for (var i = 0; i < order.length; i++) { if (order[i].getBoundingClientRect().top < vh * 0.28) cur = i; }
-      var id = cur > -1 ? order[cur].id : null;
-      if (id === last) return;
-      last = id;
-      order.forEach(function (h, j) {
-        (byId[h.id] || []).forEach(function (a) {
-          if (j === cur) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
-          a.classList.toggle('is-read', j < cur);
-        });
-      });
-      if (now) now.textContent = id ? '§ ' + numberOf[id] + ' · ' + order[cur].textContent.trim() : idle;
-    };
-    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-    window.addEventListener('resize', update);
-    update();
-    if (tocM) {
-      $$('a', tocM).forEach(function (a) { a.addEventListener('click', function () { tocM.open = false; }); });
-      /* left open, the stuck panel would cover whatever takes focus next */
-      tocM.addEventListener('focusout', function (e) { if (tocM.open && !tocM.contains(e.relatedTarget)) tocM.open = false; });
-      tocM.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && tocM.open) { e.preventDefault(); tocM.open = false; $('summary', tocM).focus(); }
-      });
-    }
-  }
-
-  /* ---- Writing index: topic chips + in-place search -------------------- */
-  var entries = $$('.entry[data-tags]');
-  var q = $('#q');
-  if (entries.length) {
-    var chips = $$('.tchip'), groups = $$('[data-year-group]');
-    var status = $('#filter-status'), empty = $('[data-empty]'), form = q && q.closest('form');
-    var searchAll = $('[data-search-link]');
-    var total = entries.length, active = 'all';
-    var apply = function () {
-      var raw = (q && q.value || '').trim(), term = fold(raw), n = 0;
-      entries.forEach(function (e) {
-        /* the row's own tag links name its tags exactly; the space-joined
-           data-tags cannot hold a tag that contains a space ("web dev") */
-        var tags = $$('.tagline a', e).map(function (a) { return a.textContent.trim(); });
-        var ok = (active === 'all' || tags.indexOf(active) > -1) && (!term || fold(e.textContent).indexOf(term) > -1);
-        e.hidden = !ok; if (ok) n++;
-      });
-      groups.forEach(function (g) {
-        var shown = $$('.entry', g).filter(function (e) { return !e.hidden; }).length;
-        g.hidden = shown === 0;
-        $$('[data-count]', g).forEach(function (c) { c.textContent = shown + (shown === 1 ? ' article' : ' articles'); });
-      });
-      if (empty) empty.hidden = n > 0;
-      /* the empty state's way out: the full-text search for what was typed */
-      if (searchAll) searchAll.setAttribute('href', '/search' + (raw ? '?q=' + encodeURIComponent(raw) : ''));
-      if (status) {
-        var noun = function (k) { return k === 1 ? ' article' : ' articles'; };
-        status.textContent = n === total && !term && active === 'all'
-          ? (total === 1 ? 'Showing 1 article' : 'Showing all ' + total + ' articles')
-          : 'Showing ' + n + ' of ' + total + noun(total) + (active !== 'all' ? ' tagged ' + active : '') + (term ? ' matching “' + raw + '”' : '');
-      }
-    };
-    /* one topic at a time: pressing the pressed topic again goes back to
-       All, so every press of a toggle button changes its state */
-    chips.forEach(function (c) {
-      c.addEventListener('click', function () {
-        var tag = c.getAttribute('data-tag');
-        active = tag === active && tag !== 'all' ? 'all' : tag;
-        chips.forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-tag') === active)); });
-        apply();
-      });
-    });
-    if (q) q.addEventListener('input', apply);
-    /* with JS the box filters in place; Enter still runs the full-text search */
-    if (form && q) form.addEventListener('submit', function (e) { if (!q.value.trim()) e.preventDefault(); });
   }
 })();

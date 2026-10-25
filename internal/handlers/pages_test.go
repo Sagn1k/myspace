@@ -8,6 +8,7 @@ package handlers
 import (
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -250,14 +251,12 @@ func checkPost(t *testing.T, body string, post *models.Blog, keep []models.KeepI
 		t.Errorf("<title> = %q, want %q", pageTitle(t, doc), want)
 	}
 
-	// The reading-progress bar fills base.html's header-extra hook.
-	header := doc.one(t, "site header", all(tagIs("header"), classIs("site-header")))
-	bar := doc.one(t, ".progress", classIs("progress"))
-	if !bar.within(header) || bar.attr["aria-hidden"] != "true" || len(bar.children(tagIs("span"))) != 1 {
-		t.Error(`want <div class="progress" aria-hidden="true"><span></span></div> inside the site header`)
+	// The reading-progress bar is gone: no page fills header-extra now.
+	if bars := doc.find(classIs("progress")); len(bars) != 0 {
+		t.Errorf("%d .progress elements; the reading-progress bar was removed", len(bars))
 	}
 
-	// Opener
+	// Head: the title, the dek and one meta line.
 	h1 := doc.one(t, "h1", tagIs("h1"))
 	if h1.attr["id"] != "post-title" || h1.textContent() != collapse(post.Title) {
 		t.Errorf("h1 = #%s %q, want #post-title %q", h1.attr["id"], h1.textContent(), post.Title)
@@ -270,20 +269,11 @@ func checkPost(t *testing.T, body string, post *models.Blog, keep []models.KeepI
 		t.Error("the h1 is outside the article it labels")
 	}
 	head := doc.one(t, "header.article-head", classIs("article-head"))
-	// "Writing / 2026": the link, an aria-hidden slash, the post's year.
-	crumbs := head.one(t, "breadcrumb", all(tagIs("nav"), classIs("crumbs"), attrIs("aria-label", "Breadcrumb")))
-	parts := crumbs.children(func(*htmlNode) bool { return true })
-	if len(parts) != 3 || parts[0].tag != "a" || parts[0].attr["href"] != "/blog" || parts[0].textContent() != "Writing" ||
-		parts[1].attr["aria-hidden"] != "true" || parts[2].textContent() != post.Date.Format("2006") {
-		t.Errorf("breadcrumb = %q", texts(parts))
+	if n := len(head.find(classIs("crumbs"))); n != 0 {
+		t.Errorf("%d breadcrumbs; the nav's current “Writing” and the date replace them", n)
 	}
-	kicker := head.find(classIs("label--accent"))
-	if len(post.Tags) == 0 {
-		if len(kicker) != 0 {
-			t.Errorf("tag kicker %q on a post without tags", texts(kicker))
-		}
-	} else if want := strings.Join(post.Tags[:min(3, len(post.Tags))], " · "); len(kicker) != 1 || kicker[0].textContent() != want {
-		t.Errorf("tag kicker = %q, want %q", texts(kicker), want)
+	if n, m := len(doc.find(classIs("label"))), len(doc.find(classIs("label--accent"))); n != 0 || m != 0 {
+		t.Errorf("%d .label and %d .label--accent elements; no micro-labels remain", n, m)
 	}
 	dek := head.find(classIs("article-dek"))
 	if post.Description == "" {
@@ -293,53 +283,47 @@ func checkPost(t *testing.T, body string, post *models.Blog, keep []models.KeepI
 	} else if len(dek) != 1 || dek[0].textContent() != collapse(post.Description) {
 		t.Errorf("dek = %q, want the description", texts(dek))
 	}
-
-	sections := 0
-	for _, it := range post.TOC {
-		if it.Level == 2 {
-			sections++
-		}
-	}
-	sectionsText := strconv.Itoa(sections) + " sections"
-	if sections == 1 {
-		sectionsText = "1 section"
-	}
-	facts := head.one(t, ".post-facts", classIs("post-facts"))
-	tm := facts.one(t, "post date", tagIs("time"))
-	if tm.attr["datetime"] != post.Date.Format("2006-01-02") || tm.textContent() != post.Date.Format("2 January 2006") {
+	meta := head.one(t, ".article-meta", classIs("article-meta"))
+	tm := meta.one(t, "post date", tagIs("time"))
+	date := post.Date.Format("2 January 2006")
+	if tm.attr["datetime"] != post.Date.Format("2006-01-02") || tm.textContent() != date {
 		t.Errorf("post date = %s %q", tm.attr["datetime"], tm.textContent())
 	}
-	wantFacts := []string{strconv.Itoa(post.ReadingTime) + " min read"}
-	if sections > 0 {
-		wantFacts = append(wantFacts, sectionsText)
-	}
-	if got := texts(facts.find(classIs("meta"))); !slices.Equal(got, wantFacts) {
-		t.Errorf("post facts = %q, want %q", got, wantFacts)
+	if want := date + " · " + strconv.Itoa(post.ReadingTime) + " min read"; meta.textContent() != want {
+		t.Errorf("article meta = %q, want %q", meta.textContent(), want)
 	}
 
-	// PDF, EPUB and Copy link, once in the opener (phones) and once in the rail.
-	actionRows := []*htmlNode{
-		head.one(t, ".post-actions", classIs("post-actions")),
-		doc.one(t, ".toc-foot", classIs("toc-foot")),
+	// Downloads: one text line in the end matter; "Copy link" was removed.
+	end := doc.one(t, "footer.article-end", all(tagIs("footer"), classIs("article-end")))
+	files := doc.one(t, ".article-files", classIs("article-files"))
+	if !files.within(end) {
+		t.Error("the downloads line is outside footer.article-end")
 	}
-	for _, row := range actionRows {
-		var hrefs []string
-		for _, a := range row.find(tagIs("a")) {
-			if a.attr["href"] != "#top" { // the rail's "Back to top"
-				hrefs = append(hrefs, a.attr["href"])
-			}
-		}
-		if want := []string{"/blog/" + post.Slug + "/download/pdf", "/blog/" + post.Slug + "/download/epub"}; !slices.Equal(hrefs, want) {
-			t.Errorf("%s links = %q, want %q", row.attr["class"], hrefs, want)
-		}
-		copyBtn := row.one(t, "copy link button", hasAttr("data-copy-url"))
-		if copyBtn.tag != "button" || copyBtn.attr["type"] != "button" || copyBtn.attr["aria-label"] == "" || copyBtn.textContent() != "Copy link" {
-			t.Errorf("copy link control = <%s %v> %q", copyBtn.tag, copyBtn.attr, copyBtn.textContent())
-		}
+	var hrefs []string
+	for _, a := range files.find(tagIs("a")) {
+		hrefs = append(hrefs, a.attr["href"])
+	}
+	if want := []string{"/blog/" + post.Slug + "/download/pdf", "/blog/" + post.Slug + "/download/epub"}; !slices.Equal(hrefs, want) {
+		t.Errorf("download links = %q, want %q", hrefs, want)
+	}
+	if got := files.textContent(); got != "Download PDF or EPUB" {
+		t.Errorf("downloads line = %q, want “Download PDF or EPUB”", got)
+	}
+	// Each link's name says what it does on its own (a screen reader's
+	// links list), and contains its visible label.
+	var names []string
+	for _, a := range files.find(tagIs("a")) {
+		names = append(names, a.attr["aria-label"])
+	}
+	if want := []string{"Download PDF", "Download EPUB"}; !slices.Equal(names, want) {
+		t.Errorf("download link names = %q, want %q", names, want)
+	}
+	if n := len(doc.find(hasAttr("data-copy-url"))); n != 0 {
+		t.Errorf("%d copy-link controls; Copy link was removed", n)
 	}
 
-	// Contents: the rail and the phone <details> both list exactly the prose's
-	// top-level h2/h3 headings, in order, so the CSS counters agree.
+	// Contents: one closed <details> listing exactly the prose's top-level
+	// h2/h3 headings, in order.
 	prose := main.one(t, "div.prose", all(tagIs("div"), classIs("prose")))
 	heads := prose.children(func(n *htmlNode) bool { return n.tag == "h2" || n.tag == "h3" })
 	if len(heads) != len(post.TOC) {
@@ -350,125 +334,109 @@ func checkPost(t *testing.T, body string, post *models.Blog, keep []models.KeepI
 			t.Errorf("heading %d = <%s id=%q> %q, TOC entry = h%d #%s %q", i, h.tag, h.attr["id"], h.textContent(), it.Level, it.ID, it.Title)
 		}
 	}
-	aside := doc.one(t, "article tools", all(tagIs("aside"), attrIs("aria-label", "Article tools")))
-	railNav := aside.find(all(tagIs("nav"), classIs("toc")))
-	mobile := doc.find(all(tagIs("details"), classIs("toc-m")))
 	if len(post.TOC) == 0 {
-		if len(railNav) != 0 || len(mobile) != 0 {
-			t.Error("contents lists rendered for a post without headings")
-		}
-		box := aside.one(t, "div.toc", all(tagIs("div"), classIs("toc")))
-		if !actionRows[1].within(box) {
-			t.Error("the rail's actions are not in the .toc box")
+		if n, m := len(doc.find(classIs("toc"))), len(doc.find(classIs("toc-list"))); n != 0 || m != 0 {
+			t.Errorf("contents rendered for a post without headings: %d .toc, %d .toc-list", n, m)
 		}
 	} else {
-		if len(railNav) != 1 || len(mobile) != 1 {
-			t.Fatalf("contents lists: %d rail, %d mobile; want 1 each", len(railNav), len(mobile))
+		nav := doc.one(t, "nav.toc", all(tagIs("nav"), classIs("toc")))
+		if nav.attr["aria-label"] != "Contents" {
+			t.Errorf("nav.toc aria-label = %q, want “Contents”", nav.attr["aria-label"])
 		}
-		if railNav[0].attr["aria-labelledby"] != "toc-title" || doc.one(t, "#toc-title", attrIs("id", "toc-title")).textContent() != "Contents" {
-			t.Error("the rail contents is not labelled “Contents”")
+		d := nav.one(t, "contents <details>", tagIs("details"))
+		if _, open := d.attr["open"]; open {
+			t.Error("the contents <details> is open; it starts closed at every width")
 		}
-		if !actionRows[1].within(railNav[0]) {
-			t.Error("the rail's actions are not in nav.toc")
+		if s := d.one(t, "contents <summary>", tagIs("summary")); s.textContent() != "Contents" {
+			t.Errorf("contents summary = %q, want “Contents”", s.textContent())
 		}
-		for _, list := range []*htmlNode{railNav[0], mobile[0]} {
-			ol := list.one(t, "ol.toc-list", all(tagIs("ol"), classIs("toc-list")))
-			items := ol.children(tagIs("li"))
-			if len(items) != len(post.TOC) {
-				t.Fatalf("%s lists %d entries, want %d", list.attr["class"], len(items), len(post.TOC))
+		ol := nav.one(t, "ol.toc-list", all(tagIs("ol"), classIs("toc-list")))
+		items := ol.children(tagIs("li"))
+		if len(items) != len(post.TOC) {
+			t.Fatalf("contents lists %d entries, want %d", len(items), len(post.TOC))
+		}
+		for i, it := range post.TOC {
+			a := items[i].one(t, "toc link", tagIs("a"))
+			if a.attr["href"] != "#"+it.ID || a.textContent() != it.Title || items[i].hasClass("sub") != (it.Level == 3) {
+				t.Errorf("contents entry %d = %s %q sub=%v, want #%s %q sub=%v", i,
+					a.attr["href"], a.textContent(), items[i].hasClass("sub"), it.ID, it.Title, it.Level == 3)
 			}
-			for i, it := range post.TOC {
-				a := items[i].one(t, "toc link", tagIs("a"))
-				if a.attr["href"] != "#"+it.ID || a.textContent() != it.Title || items[i].hasClass("sub") != (it.Level == 3) {
-					t.Errorf("%s entry %d = %s %q sub=%v, want #%s %q sub=%v", list.attr["class"], i,
-						a.attr["href"], a.textContent(), items[i].hasClass("sub"), it.ID, it.Title, it.Level == 3)
-				}
-			}
-		}
-		headMeta := railNav[0].one(t, ".toc-head", classIs("toc-head")).find(classIs("meta"))
-		now := mobile[0].one(t, "[data-toc-now]", hasAttr("data-toc-now"))
-		if sections > 0 {
-			if len(headMeta) != 1 || headMeta[0].textContent() != sectionsText || now.textContent() != sectionsText {
-				t.Errorf("sections count = %q / %q, want %q", texts(headMeta), now.textContent(), sectionsText)
-			}
-		} else if len(headMeta) != 0 || now.textContent() != "" {
-			t.Errorf("sections count shown without h2 sections: %q / %q", texts(headMeta), now.textContent())
 		}
 	}
+	if n := len(doc.find(attrIs("aria-label", "Article tools"))); n != 0 {
+		t.Errorf("%d “Article tools” asides; the rail was removed", n)
+	}
+	if n := len(doc.find(classIs("toc-m"))); n != 0 {
+		t.Errorf("%d .toc-m elements; the sticky phone contents bar was removed", n)
+	}
+	if n := len(doc.find(hasAttr("data-toc-now"))); n != 0 {
+		t.Errorf("%d [data-toc-now] elements; the scrollspy was removed", n)
+	}
 
-	// End matter
-	filed := doc.find(classIs("filed"))
+	// End matter: "Filed under a, b, c" as in-text links.
+	tags := doc.find(classIs("article-tags"))
 	if len(post.Tags) == 0 {
-		if len(filed) != 0 {
+		if len(tags) != 0 {
 			t.Error("“Filed under” on a post without tags")
 		}
 	} else {
-		if len(filed) != 1 {
-			t.Fatalf("“Filed under” blocks: %d", len(filed))
+		if len(tags) != 1 {
+			t.Fatalf("“Filed under” lines: %d, want 1", len(tags))
 		}
-		chips := filed[0].find(all(tagIs("a"), classIs("chip")))
-		if len(chips) != len(post.Tags) {
-			t.Fatalf("filed under %d tags, want %d", len(chips), len(post.Tags))
+		if !tags[0].within(end) {
+			t.Error("“Filed under” is outside footer.article-end")
+		}
+		links := tags[0].find(tagIs("a"))
+		if len(links) != len(post.Tags) {
+			t.Fatalf("filed under %d tags, want %d", len(links), len(post.Tags))
 		}
 		for i, tag := range post.Tags {
-			if chips[i].attr["href"] != "/tags/"+tag || chips[i].textContent() != tag {
-				t.Errorf("tag chip %d = %s %q, want /tags/%s", i, chips[i].attr["href"], chips[i].textContent(), tag)
+			if links[i].attr["href"] != "/tags/"+tag || links[i].textContent() != tag {
+				t.Errorf("tag link %d = %s %q, want /tags/%s", i, links[i].attr["href"], links[i].textContent(), tag)
+			}
+		}
+		if want := "Filed under " + strings.Join(post.Tags, ", "); tags[0].textContent() != collapse(want) {
+			t.Errorf("tags line = %q, want %q", tags[0].textContent(), want)
+		}
+	}
+	if n := len(doc.find(classIs("author"))); n != 0 {
+		t.Errorf("%d author boxes; the author box was removed", n)
+	}
+
+	// Keep reading: entries with a title and a date, rel prev/next by direction.
+	if len(keep) == 0 {
+		if n := len(doc.find(classIs("keep"))); n != 0 {
+			t.Errorf("%d .keep elements with nothing to suggest", n)
+		}
+	} else {
+		keepNav := doc.one(t, "nav.keep", all(tagIs("nav"), classIs("keep"), attrIs("aria-labelledby", "keep-title")))
+		if title := keepNav.one(t, "#keep-title", attrIs("id", "keep-title")); title.tag != "h2" || title.textContent() != "Keep reading" {
+			t.Errorf("keep title = <%s> %q", title.tag, title.textContent())
+		}
+		items := keepNav.find(classIs("entry"))
+		if len(items) != len(keep) {
+			t.Fatalf("keep reading shows %d entries, want %d", len(items), len(keep))
+		}
+		for i, it := range keep {
+			item := items[i]
+			if !item.hasClass("row-link") {
+				t.Errorf("keep entry %d class = %q, want a row-link", i, item.attr["class"])
+			}
+			a := item.one(t, "keep link", all(tagIs("a"), classIs("stretch")))
+			wantRel := map[string]string{"prev": "prev", "next": "next"}[it.Dir]
+			if a.attr["href"] != "/blog/"+it.Post.Slug || a.attr["rel"] != wantRel || a.textContent() != collapse(it.Post.Title) || a.parent.tag != "h3" {
+				t.Errorf("keep entry %d link = %s rel=%q %q in <%s>", i, a.attr["href"], a.attr["rel"], a.textContent(), a.parent.tag)
+			}
+			if m, want := item.one(t, "keep meta", classIs("entry-meta")).textContent(), it.Post.Date.Format("2 Jan 2006"); m != want {
+				t.Errorf("keep entry %d meta = %q, want %q", i, m, want)
+			}
+			if n := len(item.find(classIs("entry-desc"))); n != 0 {
+				t.Errorf("keep entry %d has %d descriptions; keep reading shows title and date only", i, n)
 			}
 		}
 	}
-	author := doc.one(t, "author note", all(tagIs("section"), classIs("author")))
-	if note := author.textContent(); !strings.Contains(note, config.Author+" is a software engineer with "+config.YearsExperience+" years") {
-		t.Errorf("author note = %q", note)
-	}
-	var authorLinks []string
-	for _, a := range author.find(tagIs("a")) {
-		authorLinks = append(authorLinks, a.attr["href"]+" "+a.textContent())
-	}
-	if want := []string{"/about About " + strings.Fields(config.Author)[0] + " →", config.GitHubURL + " GitHub ↗", "/rss.xml RSS feed →"}; !slices.Equal(authorLinks, want) {
-		t.Errorf("author links = %q, want %q", authorLinks, want)
-	}
-
-	keepNav := doc.one(t, "nav.keep", all(tagIs("nav"), classIs("keep"), attrIs("aria-labelledby", "keep-title")))
-	if title := keepNav.one(t, "#keep-title", attrIs("id", "keep-title")); title.tag != "h2" || title.textContent() != "Keep reading" {
-		t.Errorf("keep title = <%s> %q", title.tag, title.textContent())
-	}
-	items := keepNav.find(classIs("keep-item"))
-	wantItems := len(keep)
-	if len(keep) < 3 {
-		wantItems++
-	}
-	if len(items) != wantItems {
-		t.Fatalf("keep reading shows %d items, want %d (%d posts + index card)", len(items), wantItems, len(keep))
-	}
-	labels := map[string]string{"prev": "← Previous", "next": "Next →", "related": "Related", "more": "More writing"}
-	for i, it := range keep {
-		item := items[i]
-		if item.hasClass("keep-item--index") || !item.hasClass("row-link") {
-			t.Errorf("keep item %d class = %q", i, item.attr["class"])
-		}
-		dir := item.one(t, ".dir", classIs("dir"))
-		if l := dir.find(classIs("label")); len(l) != 1 || l[0].textContent() != labels[it.Dir] {
-			t.Errorf("keep item %d label = %q, want %q", i, texts(l), labels[it.Dir])
-		}
-		meta := dir.one(t, "keep meta", classIs("meta"))
-		if want := it.Post.Date.Format("2 Jan 2006") + " · " + strconv.Itoa(it.Post.ReadingTime) + " min"; meta.textContent() != want {
-			t.Errorf("keep item %d meta = %q, want %q", i, meta.textContent(), want)
-		}
-		a := item.one(t, "keep link", all(tagIs("a"), classIs("stretch")))
-		wantRel := map[string]string{"prev": "prev", "next": "next"}[it.Dir]
-		if a.attr["href"] != "/blog/"+it.Post.Slug || a.attr["rel"] != wantRel || a.textContent() != collapse(it.Post.Title) || a.parent.tag != "h3" {
-			t.Errorf("keep item %d link = %s rel=%q %q in <%s>", i, a.attr["href"], a.attr["rel"], a.textContent(), a.parent.tag)
-		}
-		if desc := item.children(tagIs("p")); it.Post.Description != "" && (len(desc) != 2 || desc[1].textContent() != collapse(it.Post.Description)) {
-			t.Errorf("keep item %d description = %q", i, texts(desc))
-		}
-	}
-	if len(keep) < 3 {
-		card := items[len(items)-1]
-		a := card.one(t, "index card link", tagIs("a"))
-		if !card.hasClass("keep-item--index") || a.attr["href"] != "/blog" || a.textContent() != "All writing" {
-			t.Errorf("index card = %q %s %q", card.attr["class"], a.attr["href"], a.textContent())
-		}
+	if n := len(doc.find(classIs("keep-item--index"))); n != 0 {
+		t.Errorf("%d index cards; the “All writing” card was removed", n)
 	}
 
 	if n := len(doc.find(tagIs("h1"))); n != 1 {
@@ -500,10 +468,9 @@ func TestPostPages(t *testing.T) {
 	}
 }
 
-// A small site exercises what the real content does not: the index card
-// (fewer than three posts to suggest), posts without tags, description or
-// headings, an h3-only outline, and the 70-character title limit counted in
-// characters, not bytes.
+// A small site exercises what the real content does not: two keep-reading
+// items, posts without tags, description or headings, an h3-only outline,
+// and the 70-character title limit counted in characters, not bytes.
 func TestPostPageEdgeCases(t *testing.T) {
 	seventy := "Résumé parsing — "
 	seventy += strings.Repeat("x", 70-utf8.RuneCountInString(seventy))
@@ -541,29 +508,29 @@ func TestPostPageEdgeCases(t *testing.T) {
 			h1 := doc.one(t, "h1", tagIs("h1"))
 			switch slug {
 			case "bare":
-				if len(doc.find(classIs("toc-list"))) != 0 || len(doc.find(classIs("filed"))) != 0 || len(doc.find(classIs("article-dek"))) != 0 {
+				if len(doc.find(classIs("toc-list"))) != 0 || len(doc.find(classIs("article-tags"))) != 0 || len(doc.find(classIs("article-dek"))) != 0 {
 					t.Error("contents, “Filed under” or a dek rendered for a bare post")
 				}
 			case "subs":
 				if utf8.RuneCountInString(post.Title) != 70 || len(post.Title) <= 70 || h1.hasClass("article-title--long") {
 					t.Errorf("a 70-character, %d-byte title got article-title--long", len(post.Title))
 				}
-				if subs := doc.find(all(tagIs("li"), classIs("sub"))); len(subs) != 4 {
-					t.Errorf("%d sub entries, want 2 in each contents list", len(subs))
+				if subs := doc.find(all(tagIs("li"), classIs("sub"))); len(subs) != 2 {
+					t.Errorf("%d sub entries, want 2 in the one contents list", len(subs))
 				}
 			case "long":
 				if !h1.hasClass("article-title--long") {
 					t.Error("a 71-character title did not get article-title--long")
 				}
-				if got := doc.one(t, "kicker", classIs("label--accent")).textContent(); got != "a · b · c" {
-					t.Errorf("kicker = %q, want the first three tags", got)
-				}
-				if got := doc.one(t, "toc head", classIs("toc-head")).one(t, "toc head count", classIs("meta")).textContent(); got != "1 section" {
-					t.Errorf("toc head count = %q, want the singular", got)
+				if got := doc.one(t, ".article-tags", classIs("article-tags")).textContent(); got != "Filed under a, b, c, d" {
+					t.Errorf("tags line = %q, want all four tags", got)
 				}
 			}
-			if card := doc.find(classIs("keep-item--index")); len(card) != 1 {
-				t.Errorf("%d index cards, want 1", len(card))
+			if n := len(doc.one(t, "nav.keep", all(tagIs("nav"), classIs("keep"))).find(classIs("entry"))); n != 2 {
+				t.Errorf("keep reading shows %d entries, want 2", n)
+			}
+			if card := doc.find(classIs("keep-item--index")); len(card) != 0 {
+				t.Errorf("%d index cards, want none", len(card))
 			}
 		})
 	}
@@ -571,7 +538,7 @@ func TestPostPageEdgeCases(t *testing.T) {
 
 // checkErrorPage asserts the frame every status shares and returns the
 // parsed page.
-func checkErrorPage(t *testing.T, resp response, code int, method, path, label, heading, message string) *htmlNode {
+func checkErrorPage(t *testing.T, resp response, code int, heading, message string) *htmlNode {
 	t.Helper()
 	if resp.status != code {
 		t.Fatalf("status = %d, want %d", resp.status, code)
@@ -593,9 +560,8 @@ func checkErrorPage(t *testing.T, resp response, code int, method, path, label, 
 		t.Error("error page has the reading-progress bar")
 	}
 
-	railLabel := main.one(t, "rail label", all(tagIs("p"), classIs("c-rail")))
-	if got := railLabel.textContent(); got != "Error / "+label {
-		t.Errorf("rail label = %q, want %q", got, "Error / "+label)
+	if n := len(main.find(classIs("label"))); n != 0 {
+		t.Errorf("%d .label elements in main; the rail label was removed", n)
 	}
 	numeral := main.one(t, ".error-code", classIs("error-code"))
 	if numeral.attr["aria-hidden"] != "true" || numeral.textContent() != strconv.Itoa(code) {
@@ -605,31 +571,34 @@ func checkErrorPage(t *testing.T, resp response, code int, method, path, label, 
 	if !h1.hasClass("error-title") || h1.textContent() != heading {
 		t.Errorf("h1 = %q, want %q", h1.textContent(), heading)
 	}
-	status := strconv.Itoa(code)
-	if code == http.StatusNotFound {
-		status += " Not Found"
+	if n := len(main.find(classIs("request-line"))); n != 0 {
+		t.Errorf("%d request lines; the address bar shows the path", n)
 	}
-	line := main.one(t, ".request-line", classIs("request-line"))
-	if want := method + " " + path + " → " + status; line.textContent() != want {
-		t.Errorf("request line = %q, want %q", line.textContent(), want)
-	}
-	if st := line.one(t, ".st", classIs("st")); st.textContent() != "→ "+status {
-		t.Errorf("status span = %q", st.textContent())
-	}
-	if msg := main.one(t, ".error-msg", classIs("error-msg")); msg.textContent() != message {
+	msg := main.one(t, ".error-msg", classIs("error-msg"))
+	if msg.textContent() != message {
 		t.Errorf("message = %q, want %q", msg.textContent(), message)
 	}
 
-	cta := main.one(t, ".hero-cta", classIs("hero-cta"))
-	var ways []string
-	for _, c := range cta.find(func(n *htmlNode) bool { return n.tag == "a" || n.tag == "button" }) {
-		ways = append(ways, c.tag+" "+c.attr["href"]+" "+c.textContent())
+	// The ways out: the 404's message links them; other statuses go home.
+	if code == http.StatusNotFound {
+		var ways []string
+		for _, a := range msg.find(tagIs("a")) {
+			ways = append(ways, a.attr["href"]+" "+a.textContent())
+		}
+		if want := []string{"/blog writing index", "/search search"}; !slices.Equal(ways, want) {
+			t.Errorf("ways out = %q, want %q", ways, want)
+		}
+	} else {
+		home := main.one(t, "p.more", all(tagIs("p"), classIs("more"))).one(t, "p.more a", tagIs("a"))
+		if home.attr["href"] != "/" || home.textContent() != "Go home" {
+			t.Errorf("way out = %s %q, want / “Go home”", home.attr["href"], home.textContent())
+		}
 	}
-	if want := []string{"a / Go home →", "a /blog Browse the writing", "button  Search ⌘K"}; !slices.Equal(ways, want) {
-		t.Errorf("ways out = %q, want %q", ways, want)
+	if n := len(main.find(hasAttr("data-open-palette"))); n != 0 {
+		t.Errorf("%d palette buttons in main; search is in the header", n)
 	}
-	if b := cta.one(t, "search button", tagIs("button")); b.attr["data-open-palette"] == "" || b.attr["type"] != "button" {
-		t.Error("the search button does not open the palette")
+	if n := len(main.find(classIs("hero-cta"))); n != 0 {
+		t.Errorf("%d button rows in main; the buttons were removed", n)
 	}
 	checkNoSkippedLevels(t, doc)
 	return doc
@@ -651,12 +620,13 @@ func TestErrorPageNotFound(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
 			resp := request(t, app, tt.method, tt.path)
-			doc := checkErrorPage(t, resp, http.StatusNotFound, tt.method, tt.path, "Not found",
-				"Nothing is listening on this route.", notFoundMessage)
-			// The 404 heading carries the page's one redline.
-			redlines := doc.find(classIs("redline"))
-			if len(redlines) != 1 || redlines[0].tag != "em" || redlines[0].textContent() != "this route." || redlines[0].parent.tag != "h1" {
-				t.Errorf("redline = %q, want one em “this route.” in the h1", texts(redlines))
+			doc := checkErrorPage(t, resp, http.StatusNotFound, "Nothing is listening on this route.", notFoundMessage)
+			// The redline is home's alone: the 404's em is plain italic.
+			if n := len(doc.find(classIs("redline"))); n != 0 {
+				t.Errorf("%d redlines on the 404; only home has one", n)
+			}
+			if ems := doc.one(t, "h1", tagIs("h1")).find(tagIs("em")); len(ems) != 1 || ems[0].textContent() != "this route." {
+				t.Errorf("h1 em = %q, want one em “this route.”", texts(ems))
 			}
 		})
 	}
@@ -674,25 +644,24 @@ func TestErrorPageOtherStatuses(t *testing.T) {
 		app.Get("/teapot", func(c *fiber.Ctx) error { return fiber.NewError(http.StatusTeapot, "secret teapot detail") })
 	})
 	tests := []struct {
-		path  string
-		code  int
-		label string
+		path string
+		code int
 	}{
-		{"/boom", http.StatusInternalServerError, "Server error"},
-		{"/panic", http.StatusInternalServerError, "Server error"},
-		{"/unavailable", http.StatusServiceUnavailable, "Server error"},
-		{"/teapot", http.StatusTeapot, "Request error"},
+		{"/boom", http.StatusInternalServerError},
+		{"/panic", http.StatusInternalServerError},
+		{"/unavailable", http.StatusServiceUnavailable},
+		{"/teapot", http.StatusTeapot},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
 			heading, message := errorText(tt.code)
 			resp := request(t, app, http.MethodGet, tt.path)
-			doc := checkErrorPage(t, resp, tt.code, http.MethodGet, tt.path, tt.label, heading, message)
+			doc := checkErrorPage(t, resp, tt.code, heading, message)
 			if strings.Contains(resp.body, "secret") {
 				t.Error("error detail leaked to the client")
 			}
 			if n := len(doc.find(classIs("redline"))); n != 0 {
-				t.Errorf("%d redlines on a %d page; only the 404 has one", n, tt.code)
+				t.Errorf("%d redlines on a %d page; only home has one", n, tt.code)
 			}
 			if strings.Contains(resp.body, "this route") || strings.Contains(resp.body, "Not Found") {
 				t.Error("404 copy on a non-404 page")
@@ -701,7 +670,7 @@ func TestErrorPageOtherStatuses(t *testing.T) {
 	}
 }
 
-// The requested path is printed back, so it must come out as text.
+// The requested path is reflected in og:url, so it must come out escaped.
 func TestErrorPageEscapesThePath(t *testing.T) {
 	app := newApp(newRealSite(t).h)
 	resp := request(t, app, http.MethodGet, `/x"><script>alert(1)</script>`)
@@ -711,77 +680,359 @@ func TestErrorPageEscapesThePath(t *testing.T) {
 	if strings.Contains(resp.body, "<script>alert(1)") {
 		t.Fatal("the path was written into the page unescaped")
 	}
-	line := parseHTML(t, resp.body).one(t, ".request-line", classIs("request-line"))
-	if !strings.HasPrefix(line.textContent(), `GET /x"><script>alert(1)</script> →`) {
-		t.Errorf("request line = %q", line.textContent())
+	// the path adds no script element: as many as on any other 404
+	if got, want := strings.Count(resp.body, "<script"), strings.Count(request(t, app, http.MethodGet, "/nope").body, "<script"); got != want {
+		t.Errorf("%d <script elements, want %d as on any 404", got, want)
 	}
 }
 
-// The home page's shelf line names every project past the first three
-// featured ones: a project without copy is just its name (no dangling
-// comma), a description that repeats the title loses the repeat, and a
-// leading article is lowercased to follow the comma.
-func TestHomeShelf(t *testing.T) {
-	projects := `[
+// The home page lists at most three projects, featured first, each with its
+// short summary as a sentence: ShortSummary drops a first sentence's full
+// stop and the row sets one back, unless the summary already ends with ".",
+// "!" or "?". "All projects" appears only when /projects has more, and the
+// section is left out when there are none.
+func TestHomeProjects(t *testing.T) {
+	type row struct{ title, href, desc string }
+	tests := []struct {
+		name, projects string
+		rows           []row
+		more           bool
+		absent         []string
+	}{
+		{"many", `[
 	{"id": "a", "title": "Alpha", "description": "First project.", "featured": true},
 	{"id": "b", "title": "Beta", "description": "Second project.", "featured": true},
 	{"id": "c", "title": "Gamma", "description": "Third project.", "featured": true},
 	{"id": "qr", "title": "pixelQR", "description": "pixelQR: QR code generation and management.", "featured": true},
 	{"id": "ride", "title": "rideshare", "description": "An in-memory API. More.", "summary": "A carpooling API"},
 	{"id": "solo", "title": "Solo"}
-]`
-	file := filepath.Join(t.TempDir(), "projects.json")
-	if err := os.WriteFile(file, []byte(projects), 0o644); err != nil {
-		t.Fatal(err)
+]`, []row{{"Alpha", "/projects#a", "First project."}, {"Beta", "/projects#b", "Second project."}, {"Gamma", "/projects#c", "Third project."}},
+			true, []string{"pixelQR", "rideshare", "Solo"}},
+		{"edge", `[{"id":"qr","title":"pixelQR","description":"pixelQR: QR code generation and management.","featured":true},{"id":"solo","title":"Solo","featured":true}]`,
+			[]row{{"pixelQR", "/projects#qr", "QR code generation and management."}, {"Solo", "/projects#solo", ""}}, false, nil},
+		{"others", `[{"id":"ride","title":"rideshare","description":"An in-memory API. More.","summary":"A carpooling API"}]`,
+			[]row{{"rideshare", "/projects#ride", "A carpooling API."}}, false, nil},
+		{"punctuated", `[
+	{"id": "q", "title": "Q", "description": "Why not? Because.", "featured": true},
+	{"id": "s", "title": "S", "summary": "Ends with a stop.", "featured": true},
+	{"id": "x", "title": "X", "summary": "Loud!"}
+]`, []row{{"Q", "/projects#q", "Why not?"}, {"S", "/projects#s", "Ends with a stop."}, {"X", "/projects#x", "Loud!"}}, false, nil},
+		{"none", `[]`, nil, false, nil},
 	}
-	s := newSite(t, realContent, file, realTemplates, models.DefaultConfig())
-	resp := request(t, newApp(s.h), http.MethodGet, "/")
-	if resp.status != http.StatusOK {
-		t.Fatalf("status = %d", resp.status)
-	}
-	doc := parseHTML(t, resp.body)
-	also := doc.one(t, ".also", classIs("also"))
-	line := also.one(t, ".also p", tagIs("p")).textContent()
-	// (the label is a block of its own: no space after it in the text)
-	want := "Also on the shelfpixelQR, QR code generation and management · rideshare, a carpooling API · Solo"
-	if line != want {
-		t.Errorf("shelf line = %q, want %q", line, want)
-	}
-	if strings.Contains(resp.body, "<b>Solo</b>,") {
-		t.Error("a project without copy leaves a dangling comma")
-	}
-	for _, p := range doc.find(all(tagIs("h3"), attrIs("id", "p-qr"))) {
-		t.Errorf("pixelQR is featured past the first three, but has a work row: %q", p.textContent())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "projects.json")
+			if err := os.WriteFile(file, []byte(tt.projects), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			s := newSite(t, realContent, file, realTemplates, models.DefaultConfig())
+			resp := request(t, newApp(s.h), http.MethodGet, "/")
+			if resp.status != http.StatusOK {
+				t.Fatalf("status = %d", resp.status)
+			}
+			doc := parseHTML(t, resp.body)
+			work := doc.find(all(tagIs("section"), attrIs("id", "work")))
+			if len(tt.rows) == 0 {
+				if len(work) != 0 {
+					t.Error("a Projects section on a site without projects")
+				}
+			} else {
+				if len(work) != 1 {
+					t.Fatalf("%d section#work elements, want 1", len(work))
+				}
+				if h2 := work[0].one(t, "#work h2", tagIs("h2")); h2.textContent() != "Projects" {
+					t.Errorf("#work h2 = %q, want “Projects”", h2.textContent())
+				}
+				var got []row
+				for i, e := range work[0].find(classIs("entry")) {
+					a := e.one(t, "project link", all(tagIs("a"), classIs("stretch")))
+					r := row{a.textContent(), a.attr["href"], ""}
+					switch d := e.find(classIs("entry-desc")); len(d) {
+					case 0:
+					case 1:
+						r.desc = d[0].textContent()
+					default:
+						t.Errorf("project row %d has %d descriptions", i, len(d))
+					}
+					got = append(got, r)
+				}
+				if !slices.Equal(got, tt.rows) {
+					t.Errorf("project rows = %q, want %q", got, tt.rows)
+				}
+				more := work[0].find(all(tagIs("p"), classIs("more")))
+				if tt.more {
+					if len(more) != 1 {
+						t.Fatalf("%d p.more in #work, want 1", len(more))
+					}
+					if a := more[0].one(t, "p.more a", tagIs("a")); a.attr["href"] != "/projects" || a.textContent() != "All projects" {
+						t.Errorf("more link = %s %q, want /projects “All projects”", a.attr["href"], a.textContent())
+					}
+				} else if len(more) != 0 {
+					t.Errorf("%d p.more in #work with every project shown", len(more))
+				}
+			}
+			if !tt.more && strings.Contains(resp.body, "All projects") {
+				t.Error("“All projects” with every project shown")
+			}
+			for _, a := range doc.find(all(tagIs("a"), classIs("stretch"))) {
+				if slices.Contains(tt.absent, a.textContent()) {
+					t.Errorf("%s has a row past the first three", a.textContent())
+				}
+			}
+			if n := len(doc.find(tagIs("h1"))); n != 1 {
+				t.Errorf("%d h1 elements", n)
+			}
+			checkNoSkippedLevels(t, doc)
+		})
 	}
 }
 
-// The projects page's "Featured" fact appears only when it says something:
-// when not every project is featured.
-func TestProjectsFacts(t *testing.T) {
-	mixed := filepath.Join(t.TempDir(), "projects.json")
-	if err := os.WriteFile(mixed, []byte(`[{"id": "a", "title": "A", "featured": true}, {"id": "b", "title": "B"}]`), 0o644); err != nil {
-		t.Fatal(err)
+// The home page's Writing section lists the newest three posts (title and
+// date), adds "All writing" only when there are more, and is left out on a
+// site without posts.
+func TestHomeWriting(t *testing.T) {
+	for _, n := range []int{0, 1, 3, 4} {
+		t.Run(strconv.Itoa(n), func(t *testing.T) {
+			dir := t.TempDir()
+			for i := 1; i <= n; i++ {
+				src := fmt.Sprintf("---\ntitle: \"Post %d\"\ndate: 2026-01-0%d\ndescription: \"About %d.\"\n---\n\nText.\n", i, i, i)
+				if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("p%d.md", i)), []byte(src), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			s := newSite(t, dir, realProjects, realTemplates, models.DefaultConfig())
+			resp := request(t, newApp(s.h), http.MethodGet, "/")
+			if resp.status != http.StatusOK {
+				t.Fatalf("status = %d", resp.status)
+			}
+			doc := parseHTML(t, resp.body)
+			writing := doc.find(all(tagIs("section"), attrIs("id", "writing")))
+			if n == 0 {
+				if len(writing) != 0 {
+					t.Error("a Writing section on a site without posts")
+				}
+				return
+			}
+			if len(writing) != 1 {
+				t.Fatalf("%d section#writing elements, want 1", len(writing))
+			}
+			var got, want []string
+			for i := n; i > n-min(n, 3); i-- { // newest first
+				want = append(want, fmt.Sprintf("/blog/p%d Post %d · %d Jan 2026", i, i, i))
+			}
+			for _, e := range writing[0].find(classIs("entry")) {
+				a := e.one(t, "post link", all(tagIs("a"), classIs("stretch")))
+				got = append(got, a.attr["href"]+" "+a.textContent()+" · "+e.one(t, "post date", classIs("entry-meta")).textContent())
+				if d := e.find(classIs("entry-desc")); len(d) != 0 {
+					t.Errorf("%s shows its description; home rows are title and date", a.attr["href"])
+				}
+			}
+			if !slices.Equal(got, want) {
+				t.Errorf("writing rows = %q, want %q", got, want)
+			}
+			more := writing[0].find(all(tagIs("p"), classIs("more")))
+			switch {
+			case n > 3 && len(more) != 1:
+				t.Fatalf("%d p.more with %d posts, want 1", len(more), n)
+			case n > 3:
+				if a := more[0].one(t, "p.more a", tagIs("a")); a.attr["href"] != "/blog" || a.textContent() != "All writing" {
+					t.Errorf("more link = %s %q, want /blog “All writing”", a.attr["href"], a.textContent())
+				}
+			case len(more) != 0:
+				t.Errorf("“All writing” with every one of %d posts shown", n)
+			}
+			checkNoSkippedLevels(t, doc)
+		})
 	}
-	allFeatured := filepath.Join(t.TempDir(), "projects.json")
-	if err := os.WriteFile(allFeatured, []byte(`[{"id": "a", "title": "A", "featured": true}, {"id": "b", "title": "B", "featured": true}]`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	for file, want := range map[string]string{
-		mixed:       "Projects2 | Featured1 | Everything elseGitHub ↗",
-		allFeatured: "Projects2 | Everything elseGitHub ↗",
-	} {
-		s := newSite(t, realContent, file, realTemplates, models.DefaultConfig())
+}
+
+// The projects page lists every project, featured first, then closes with
+// the GitHub line. A project's install command is shown in full with a Copy
+// button, and replaces its "Live demo" link.
+func TestProjectsList(t *testing.T) {
+	config := models.DefaultConfig()
+	get := func(t *testing.T, projects string) *htmlNode {
+		t.Helper()
+		file := filepath.Join(t.TempDir(), "projects.json")
+		if err := os.WriteFile(file, []byte(projects), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		s := newSite(t, realContent, file, realTemplates, config)
 		resp := request(t, newApp(s.h), http.MethodGet, "/projects")
 		if resp.status != http.StatusOK {
 			t.Fatalf("status = %d", resp.status)
 		}
-		facts := parseHTML(t, resp.body).one(t, ".page-facts", classIs("page-facts"))
-		var got []string
-		for _, d := range facts.children(tagIs("div")) {
-			got = append(got, d.textContent())
+		doc := parseHTML(t, resp.body)
+		if n := len(doc.find(tagIs("h1"))); n != 1 {
+			t.Errorf("%d h1 elements", n)
 		}
-		if strings.Join(got, " | ") != want {
-			t.Errorf("facts = %q, want %q", strings.Join(got, " | "), want)
+		checkNoSkippedLevels(t, doc)
+		return doc
+	}
+
+	t.Run("mixed", func(t *testing.T) {
+		doc := get(t, `[{"id": "a", "title": "A"}, {"id": "b", "title": "B", "featured": true}]`)
+		if n := len(doc.find(classIs("page-facts"))); n != 0 {
+			t.Errorf("%d .page-facts; the facts were removed", n)
 		}
+		var ids []string
+		for _, p := range doc.find(all(tagIs("article"), classIs("project"))) {
+			id := p.attr["id"]
+			ids = append(ids, id)
+			p.one(t, "h2#p-"+id, all(tagIs("h2"), attrIs("id", "p-"+id)))
+		}
+		if want := []string{"b", "a"}; !slices.Equal(ids, want) {
+			t.Errorf("projects = %q, want %q (featured first)", ids, want)
+		}
+		main := doc.one(t, "main#main", attrIs("id", "main"))
+		gh := main.find(all(tagIs("a"), attrIs("href", config.GitHubURL)))
+		if len(gh) != 1 {
+			t.Fatalf("%d links to %s in main, want 1", len(gh), config.GitHubURL)
+		}
+		if p := gh[0].parent; p.tag != "p" || !p.hasClass("more") || p.textContent() != "Everything else lives on GitHub." {
+			t.Errorf("GitHub line = <%s class=%q> %q", p.tag, p.attr["class"], p.textContent())
+		}
+	})
+
+	t.Run("install", func(t *testing.T) {
+		cmd := "curl -fsSL https://example.com/i.sh | bash"
+		doc := get(t, `[{"id": "w", "title": "W", "description": "Does a thing.", "install": "`+cmd+`", "github_link": "https://github.com/x/w", "demo_link": "https://example.com/i.sh", "featured": true}]`)
+		box := doc.one(t, ".install", classIs("install"))
+		if box.attr["role"] != "group" || box.attr["aria-labelledby"] != "install-w" {
+			t.Errorf("install panel role=%q aria-labelledby=%q, want group, install-w", box.attr["role"], box.attr["aria-labelledby"])
+		}
+		if l := doc.one(t, "#install-w", attrIs("id", "install-w")); l.textContent() != "Install W" {
+			t.Errorf("install label = %q, want “Install W”", l.textContent())
+		}
+		btn := box.one(t, "button.install__copy", all(tagIs("button"), classIs("install__copy")))
+		if btn.attr["type"] != "button" || btn.attr["data-copy"] != cmd || btn.attr["aria-label"] != "Copy the W install command" || btn.textContent() != "Copy" {
+			t.Errorf("install copy button = %v %q", btn.attr, btn.textContent())
+		}
+		code := box.one(t, "pre.install__cmd", all(tagIs("pre"), classIs("install__cmd"))).one(t, "install code", tagIs("code"))
+		if code.textContent() != cmd {
+			t.Errorf("install command = %q, want %q", code.textContent(), cmd)
+		}
+		// The URL may wrap after its path slash (example.com/<wbr>i.sh), never
+		// inside "https://" and never mid-word.
+		if n := len(code.find(tagIs("wbr"))); n != 1 {
+			t.Errorf("%d <wbr> in the install command, want 1 (after the path slash)", n)
+		}
+		// One project with its source linked: no plural "each one" copy.
+		if d := doc.one(t, ".page-dek", classIs("page-dek")).textContent(); d != "Things I’ve built." {
+			t.Errorf("dek = %q, want “Things I’ve built.”", d)
+		}
+		links := doc.one(t, ".links", classIs("links")).find(tagIs("a"))
+		if len(links) != 1 || links[0].textContent() != "Source: W" || links[0].attr["href"] != "https://github.com/x/w" {
+			t.Errorf("project links = %q, want one “Source: W”", texts(links))
+		}
+		for _, a := range doc.find(tagIs("a")) {
+			if strings.HasPrefix(a.textContent(), "Live demo") {
+				t.Errorf("a “Live demo” link (%s) next to the install command", a.attr["href"])
+			}
+		}
+	})
+
+	t.Run("demo", func(t *testing.T) {
+		doc := get(t, `[{"id": "d", "title": "D", "github_link": "https://github.com/x/d", "demo_link": "https://d.example"}]`)
+		links := doc.one(t, ".links", classIs("links"))
+		var hrefs []string
+		for _, a := range links.find(tagIs("a")) {
+			hrefs = append(hrefs, a.attr["href"])
+		}
+		if want := []string{"https://github.com/x/d", "https://d.example"}; !slices.Equal(hrefs, want) {
+			t.Errorf("project links = %q, want %q", hrefs, want)
+		}
+		// A space between the links: reader mode and copied text must not
+		// run them together as "Source: DLive demo: D".
+		if got := links.textContent(); got != "Source: D Live demo: D" {
+			t.Errorf("links text = %q, want “Source: D Live demo: D”", got)
+		}
+	})
+
+	t.Run("none", func(t *testing.T) {
+		doc := get(t, `[]`)
+		if n := len(doc.find(all(tagIs("article"), classIs("project")))); n != 0 {
+			t.Errorf("%d projects on a site without any", n)
+		}
+		if m := doc.one(t, "p.more", all(tagIs("p"), classIs("more"))).textContent(); m != "Everything lives on GitHub." {
+			t.Errorf("GitHub line = %q, want “Everything lives on GitHub.”", m)
+		}
+		if d := doc.one(t, ".page-dek", classIs("page-dek")).textContent(); d != "Things I’ve built." {
+			t.Errorf("dek = %q, want “Things I’ve built.”", d)
+		}
+	})
+}
+
+// The frame every page shares: the name, the four section links and the
+// footer links. The revision is a <meta> in the head now, not footer text.
+func TestSiteChrome(t *testing.T) {
+	config := models.DefaultConfig()
+	config.Revision = "abc1234"
+	s := newSite(t, realContent, realProjects, realTemplates, config)
+	app := newApp(s.h)
+
+	resp := request(t, app, http.MethodGet, "/")
+	if resp.status != http.StatusOK {
+		t.Fatalf("status = %d", resp.status)
+	}
+	doc := parseHTML(t, resp.body)
+	var nav []string
+	for _, a := range doc.one(t, "nav.nav", all(tagIs("nav"), classIs("nav"))).find(tagIs("a")) {
+		nav = append(nav, a.attr["href"]+" "+a.textContent())
+	}
+	if want := []string{"/blog Writing", "/projects Projects", "/about About", "/contact Contact"}; !slices.Equal(nav, want) {
+		t.Errorf("nav = %q, want %q", nav, want)
+	}
+	if brand := doc.one(t, "a.brand", all(tagIs("a"), classIs("brand"))); brand.attr["aria-current"] != "page" {
+		t.Errorf("brand aria-current = %q on home, want page", brand.attr["aria-current"])
+	}
+
+	// The header's two icon buttons: search opens the palette (and is
+	// replaced by a link to /search without JS), and the theme toggle.
+	hdr := doc.one(t, "site header", all(tagIs("header"), classIs("site-header")))
+	if b := hdr.one(t, "search button", hasAttr("data-open-palette")); b.tag != "button" || b.attr["type"] != "button" || b.attr["aria-haspopup"] != "dialog" || b.attr["aria-label"] == "" {
+		t.Errorf("search button = <%s> %v, want a type=button with aria-haspopup=dialog and a name", b.tag, b.attr)
+	}
+	ns := hdr.one(t, "header <noscript>", tagIs("noscript")).one(t, "no-JS search link", tagIs("a"))
+	if ns.attr["href"] != "/search" || !ns.hasClass("icon-btn") || ns.attr["aria-label"] == "" {
+		t.Errorf("no-JS search link = %v, want an a.icon-btn to /search with a name", ns.attr)
+	}
+	if b := hdr.one(t, "theme toggle", all(tagIs("button"), classIs("theme-toggle"))); b.attr["type"] != "button" || b.attr["aria-label"] == "" {
+		t.Errorf("theme toggle = %v, want a type=button with a name", b.attr)
+	}
+
+	footer := doc.one(t, "site footer", all(tagIs("footer"), classIs("site-footer")))
+	var links, rels []string
+	for _, a := range footer.find(tagIs("a")) {
+		links = append(links, a.attr["href"]+" "+a.textContent())
+		rels = append(rels, a.attr["rel"])
+	}
+	wantLinks := []string{config.GitHubURL + " GitHub", config.LinkedInURL + " LinkedIn", config.XURL + " X", "/rss.xml RSS", "mailto:" + config.Email + " Email"}
+	if !slices.Equal(links, wantLinks) {
+		t.Errorf("footer links = %q, want %q", links, wantLinks)
+	}
+	if want := []string{"me", "me", "me", "", ""}; !slices.Equal(rels, want) {
+		t.Errorf("footer rels = %q, want %q", rels, want)
+	}
+	if !strings.Contains(resp.body, `<meta name="revision" content="abc1234">`) {
+		t.Error(`no <meta name="revision" content="abc1234"> in the page`)
+	}
+	if strings.Contains(footer.textContent(), "abc1234") {
+		t.Error("the revision is still footer text")
+	}
+
+	if list := doc.one(t, "#palette-list", attrIs("id", "palette-list")); list.attr["data-index"] != "/search-index.json" {
+		t.Errorf("palette data-index = %q", list.attr["data-index"])
+	}
+	if input := doc.one(t, "#palette-input", attrIs("id", "palette-input")); input.attr["role"] != "combobox" {
+		t.Errorf("palette input role = %q, want combobox", input.attr["role"])
+	}
+	if n := len(doc.find(classIs("palette-foot"))); n != 0 {
+		t.Errorf("%d palette footers; the hint row was removed", n)
+	}
+
+	blog := parseHTML(t, request(t, app, http.MethodGet, "/blog").body)
+	if c, ok := blog.one(t, "a.brand", all(tagIs("a"), classIs("brand"))).attr["aria-current"]; ok {
+		t.Errorf("brand aria-current = %q on /blog, want none", c)
 	}
 }

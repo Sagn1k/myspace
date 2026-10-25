@@ -1,38 +1,15 @@
 {{define "content"}}
   <header class="page-head">
-    <div class="wrap grid">
-      <div class="c-main rise" style="--d:0">
-        <p class="page-kicker label"><span class="label--accent">Index</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>Topics</p>
-        <h1 class="page-title">Topics</h1>
-        <p class="page-dek">Every subject the writing touches, most written-about first.</p>
-      </div>
-      <div class="c-rail rise" style="--d:1">
-        <dl class="page-facts">
-          <div><dt class="label">Topics</dt><dd>{{len .Tags}}</dd></div>
-          <div><dt class="label">Articles</dt><dd>{{.PostCount}}</dd></div>
-          <div class="facts-feed"><dt class="label">Everything</dt><dd><a class="meta-link" href="/blog">All writing <span class="arr" aria-hidden="true">→</span></a></dd></div>
-        </dl>
-      </div>
-    </div>
+    <h1 class="page-title">Topics</h1>
+    <p class="page-dek">Every subject the writing touches, most written-about first.</p>
   </header>
-
-  <div class="wrap">
-    {{- with .Tags}}
-    <section class="grid" aria-labelledby="ti-title" style="row-gap:12px">
-      <h2 id="ti-title" class="label c-rail" style="padding-top:16px">By weight, then A–Z</h2>
-      <div class="c-main">
-        <ol class="topic-index">
-          {{- range .}}
-          <li><a href="/tags/{{pathEscape .Name}}"><span>{{.Name}}</span><span class="n">{{.Count}}<span class="sr-only"> {{if eq .Count 1}}article{{else}}articles{{end}}</span></span></a></li>
-          {{- end}}
-        </ol>
-      </div>
-    </section>
-    {{- else}}
-    <section class="year-group grid" aria-labelledby="ti-title" style="margin-top:0">
-      <div class="year-mark c-rail"><div class="inner"><h2 id="ti-title" class="label">By weight, then A–Z</h2></div></div>
-      <div class="c-main"><p class="empty">No topics yet. <a href="/blog">Browse the writing</a>.</p></div>
-    </section>
+  {{- with .Tags}}
+  <ol class="topic-index">
+    {{- range .}}
+    <li><a href="/tags/{{pathEscape .Name}}">{{.Name}}{{if gt .Count 1}} <span class="n">{{.Count}}<span class="sr-only"> articles</span></span>{{end}}</a></li>
     {{- end}}
-  </div>
+  </ol>
+  {{- else}}
+  <p class="empty">No topics yet. <a href="/blog">Browse the writing</a>.</p>
+  {{- end}}
 {{end}}

@@ -1,165 +1,57 @@
 {{/*
-  blog_post.html: one article (SPEC §6.3, §5.15–5.21).
-  Data: .Post (*Blog), .KeepReading ([]KeepItem, at most 3: prev, next,
-  related or more) and the globals.
-  main.js drives the reading-progress bar (header-extra), the contents rail
-  (.toc: % read, scrollspy, sections already read), the mobile <details>
-  contents, heading self-links, code-listing line counts and the copy buttons.
-  Both contents lists are rendered from .Post.TOC, the same top-level h2/h3
-  headings the prose numbers with CSS counters, so their § numbers agree.
+  blog_post.html: one article. Data: .Post (*Blog), .KeepReading
+  ([]KeepItem, at most 3: prev, next, related or more) and the globals.
+  The page is the head (title, dek, date and reading time), a collapsed
+  contents (a <details>, rendered from .Post.TOC, the prose's top-level
+  h2/h3 headings), the prose, then the tags, the downloads and keep reading.
+  main.js adds the heading self-links and the code Copy buttons.
   Page-local helpers are prefixed "article-".
 */}}
-{{define "header-extra"}}<div class="progress" aria-hidden="true"><span></span></div>{{end}}
-
 {{define "content"}}
-{{- $sections := 0}}{{range .Post.TOC}}{{if eq .Level 2}}{{$sections = add $sections 1}}{{end}}{{end}}
 <article class="article" aria-labelledby="post-title">
-
   <header class="article-head">
-    <div class="wrap grid">
-      <nav class="crumbs meta c-rail row-1" aria-label="Breadcrumb"><a href="/blog">Writing</a><span class="sl" aria-hidden="true">/</span><span>{{.Post.Date.Format "2006"}}</span></nav>
-      {{- with .Post.Tags}}
-      <p class="label label--accent c-main row-1">{{range $i, $t := .}}{{if lt $i 3}}{{if $i}} · {{end}}{{$t}}{{end}}{{end}}</p>
-      {{- end}}
-      <div class="c-main title-col">
-        {{- /* "over 70 characters" counts runes: truncate only changes a longer title */}}
-        <h1 id="post-title" class="article-title{{if ne (truncate .Post.Title 70) .Post.Title}} article-title--long{{end}} rise" style="--d:0">{{.Post.Title}}</h1>
-        {{- with .Post.Description}}
-        <p class="article-dek rise" style="--d:1">{{.}}</p>
-        {{- end}}
-      </div>
-      <div class="c-rail meta-col rise" style="--d:2">
-        <div class="post-facts">
-          <p class="pub"><time datetime="{{.Post.Date.Format "2006-01-02"}}">{{.Post.Date.Format "2 January 2006"}}</time></p>
-          <p class="meta">{{.Post.ReadingTime}} min read</p>
-          {{- if $sections}}
-          <p class="meta">{{template "article-sections" $sections}}</p>
-          {{- end}}
-        </div>
-        <div class="post-actions">
-          {{- template "article-actions" dict "Slug" .Post.Slug "LinkIcon" true}}
-        </div>
-      </div>
-      <hr class="opener-rule c-full">
-    </div>
+    {{- /* "over 70 characters" counts runes: truncate only changes a longer title */}}
+    <h1 id="post-title" class="article-title{{if ne (truncate .Post.Title 70) .Post.Title}} article-title--long{{end}}">{{.Post.Title}}</h1>
+    {{- with .Post.Description}}
+    <p class="article-dek">{{.}}</p>
+    {{- end}}
+    <p class="article-meta"><time datetime="{{.Post.Date.Format "2006-01-02"}}">{{.Post.Date.Format "2 January 2006"}}</time> · {{.Post.ReadingTime}} min read</p>
   </header>
-
-  <div class="article-body">
-    <div class="wrap grid">
-      <aside class="c-rail" aria-label="Article tools">
-        {{- if .Post.TOC}}
-        <nav class="toc" aria-labelledby="toc-title">
-          <div class="toc-head"><p id="toc-title" class="label label--ink">Contents</p>{{if $sections}}<p class="meta">{{template "article-sections" $sections}}</p>{{end}}</div>
-          <ol class="toc-list">
-            {{- template "article-toc-items" .Post.TOC}}
-          </ol>
-          {{- template "article-toc-foot" .Post}}
-        </nav>
-        {{- else}}
-        <div class="toc">
-          {{- template "article-toc-foot" .Post}}
-        </div>
-        {{- end}}
-      </aside>
-      {{- if .Post.TOC}}
-
-      <details class="toc-m">
-        <summary><span class="label label--ink">Contents</span><span class="toc-m__now meta" data-toc-now>{{if $sections}}{{template "article-sections" $sections}}{{end}}</span>{{template "icon-chevron"}}</summary>
-        <ol class="toc-list">
-          {{- template "article-toc-items" .Post.TOC}}
-        </ol>
-      </details>
-      {{- end}}
-
-      <div class="prose">
+  {{- with .Post.TOC}}
+  <nav class="toc" aria-label="Contents">
+    <details>
+      <summary>Contents{{template "icon-chevron"}}</summary>
+      <ol class="toc-list">
+        {{- template "article-toc-items" .}}
+      </ol>
+    </details>
+  </nav>
+  {{- end}}
+  <div class="prose">
 {{html .Post.HTMLContent}}
-      </div>
-    </div>
   </div>
-
   <footer class="article-end">
-    <div class="wrap">
-      {{- with .Post.Tags}}
-      <div class="filed grid">
-        <p class="label c-rail">Filed under</p>
-        <ul class="chips c-main" aria-label="Tags">
-          {{- range .}}
-          <li><a class="chip" href="/tags/{{pathEscape .}}">{{.}}</a></li>
-          {{- end}}
-        </ul>
-      </div>
-      {{- end}}
-
-      <section class="author grid" aria-label="About the author">
-        <div class="c-rail"><span class="brand-mark brand-mark--lg" aria-hidden="true">SB</span></div>
-        <div class="c-main">
-          <p><b>{{.Config.Author}}</b> is a software engineer {{with .Config.YearsExperience}}with {{.}} years in{{else}}working on{{end}} backend systems, distributed architectures and infrastructure. He writes here about what he learns building them, and the tools around them.</p>
-          <div class="links">
-            <a class="ext" href="/about">About{{with split .Config.Author " "}} {{index . 0}}{{end}} <span class="arr" aria-hidden="true">→</span></a>
-            {{- with .Config.GitHubURL}}
-            <a class="ext" href="{{.}}" rel="me">GitHub <span class="arr arr--ne" aria-hidden="true">↗</span></a>
-            {{- end}}
-            <a class="ext" href="/rss.xml">RSS feed <span class="arr" aria-hidden="true">→</span></a>
-          </div>
-        </div>
-      </section>
-
-      <nav class="keep" aria-labelledby="keep-title">
-        <h2 id="keep-title" class="label label--ink keep-title">Keep reading</h2>
-        <div class="keep-grid">
-          {{- range .KeepReading}}
-          <article class="keep-item row-link">
-            <p class="dir">
-              {{- if eq .Dir "prev"}}<span class="label"><span class="arr arr--back" aria-hidden="true">←</span> Previous</span>
-              {{- else if eq .Dir "next"}}<span class="label">Next <span class="arr" aria-hidden="true">→</span></span>
-              {{- else if eq .Dir "related"}}<span class="label">Related</span>
-              {{- else}}<span class="label">More writing</span>
-              {{- end}}<span class="meta"><time datetime="{{.Post.Date.Format "2006-01-02"}}">{{.Post.Date.Format "2 Jan 2006"}}</time> · {{.Post.ReadingTime}} min</span></p>
-            <h3><a class="stretch u" href="/blog/{{.Post.Slug}}"{{if eq .Dir "prev"}} rel="prev"{{else if eq .Dir "next"}} rel="next"{{end}}>{{.Post.Title}}</a></h3>
-            {{- with .Post.Description}}
-            <p>{{.}}</p>
-            {{- end}}
-          </article>
-          {{- end}}
-          {{- if lt (len .KeepReading) 3}}
-          <article class="keep-item keep-item--index row-link">
-            <p class="dir"><span class="label">The index</span><span class="meta">By year &amp; topic</span></p>
-            <h3><a class="stretch u" href="/blog">All writing</a></h3>
-            <p>Every article on backend systems, distributed architecture, databases and tooling, newest first, filterable by topic.</p>
-          </article>
-          {{- end}}
-        </div>
-      </nav>
-    </div>
+    {{- with .Post.Tags}}
+    <p class="article-tags">Filed under {{range $i, $t := .}}{{if $i}}, {{end}}<a href="/tags/{{pathEscape $t}}">{{$t}}</a>{{end}}</p>
+    {{- end}}
+    <p class="article-files">Download <a href="/blog/{{.Post.Slug}}/download/pdf" aria-label="Download PDF">PDF</a> or <a href="/blog/{{.Post.Slug}}/download/epub" aria-label="Download EPUB">EPUB</a></p>
+    {{- with .KeepReading}}
+    <nav class="keep" aria-labelledby="keep-title">
+      <h2 id="keep-title" class="section-title">Keep reading</h2>
+      <ol class="entries">
+        {{- range .}}
+        {{- template "index-entry" dict "Post" .Post "Layout" "2 Jan 2006" "Desc" false "Rel" .Dir}}
+        {{- end}}
+      </ol>
+    </nav>
+    {{- end}}
   </footer>
-
 </article>
 {{end}}
-
-{{- /* "9 sections" / "1 section". Takes the count. */}}
-{{define "article-sections"}}{{.}} section{{if ne . 1}}s{{end}}{{end}}
 
 {{- /* One <li> per TOC entry; h3 entries are unnumbered sub-items. Takes .Post.TOC. */}}
 {{define "article-toc-items"}}
 {{- range .}}
             <li{{if eq .Level 3}} class="sub"{{end}}><a href="#{{.ID}}">{{.Title}}</a></li>
 {{- end}}
-{{- end}}
-
-{{- /* PDF, EPUB and Copy link. Takes dict "Slug" "LinkIcon" (the rail's
-       narrow copy button goes without the link icon, as in the design). */}}
-{{define "article-actions"}}
-          <a class="btn btn--sm" href="/blog/{{.Slug}}/download/pdf">{{template "icon-download"}}<span class="sr-only">Download </span>PDF</a>
-          <a class="btn btn--sm" href="/blog/{{.Slug}}/download/epub">{{template "icon-download"}}<span class="sr-only">Download </span>EPUB</a>
-          <button class="btn btn--sm" type="button" data-copy-url aria-label="Copy link to this article">{{if .LinkIcon}}{{template "icon-link"}}{{end}}<span class="copy-label">Copy link</span></button>
-{{- end}}
-
-{{- /* The rail's footer: % read, back to top, actions. Takes .Post. */}}
-{{define "article-toc-foot"}}
-          <div class="toc-foot">
-            <div class="row"><p class="meta"><b data-progress-pct>0%</b> read</p><a class="meta-link" href="#top">Back to top <span class="arr" aria-hidden="true">↑</span></a></div>
-            <div class="actions">
-              {{- template "article-actions" dict "Slug" .Slug "LinkIcon" false}}
-            </div>
-          </div>
 {{- end}}

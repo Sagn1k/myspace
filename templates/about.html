@@ -1,60 +1,34 @@
 {{/*
-  About (SPEC 6.5): page head, 01 Background, 02 Focus, 03 Toolbox, 04 Contact.
-  The copy is the owner's own (the old about page). The Writing fact shows the
-  article count when the handler passes .PostCount, else links to all of them.
+  About: the title, the bio, What I do (four areas) and the tech stack.
+  The copy is the owner's own (the old about page and focus areas). There
+  is no dek: the bio's first sentence says who and what, and the years are
+  in the home intro.
 */}}
 {{define "content"}}
   <header class="page-head">
-    <div class="wrap grid">
-      <div class="c-main rise" style="--d:0">
-        <p class="page-kicker label"><span class="label--accent">About</span><span class="sl" aria-hidden="true">&ensp;/&ensp;</span>{{.Config.Author}}</p>
-        <h1 class="page-title">About</h1>
-        <p class="page-dek">Who I am, what I work on, and the tools I reach for.</p>
-      </div>
-      <div class="c-rail rise" style="--d:1">
-        <dl class="page-facts">
-          {{- with .Config.YearsExperience}}
-          <div><dt class="label">Experience</dt><dd>{{.}} years</dd></div>
-          {{- end}}
-          <div><dt class="label">Primary language</dt><dd>Go</dd></div>
-          <div class="facts-feed"><dt class="label">Writing</dt><dd><a class="meta-link" href="/blog">{{with .PostCount}}{{.}} article{{if ne . 1}}s{{end}}{{else}}All articles{{end}} <span class="arr" aria-hidden="true">→</span></a></dd></div>
-        </dl>
-      </div>
-    </div>
+    <h1 class="page-title">About</h1>
   </header>
-
-  <section class="section" style="padding-top:0" aria-labelledby="bg-title">
-    <div class="wrap">
-      <header class="section-head grid">
-        <p class="section-mark label c-rail"><span class="n">01</span><span class="sl" aria-hidden="true">/</span>Background</p>
-        <div class="c-main"><h2 id="bg-title" class="sr-only">Background</h2>
-          <div class="bio">
-            <p class="lede">I’m a software engineer with a deep focus on backend systems, distributed computing, and infrastructure. I love solving complex problems at scale and building the <em class="redline">invisible plumbing</em> that powers modern applications.</p>
-            <p>My journey in software engineering started with a curiosity about how large-scale systems work under the hood. Over the years, I’ve developed expertise in designing resilient, high-throughput services and have contributed to systems that serve millions of users.</p>
-            <p>I believe in writing clean, maintainable code and building systems that are easy to operate. I’m a strong advocate for observability, automation, and developer experience. When I’m not coding, I enjoy writing about technical topics and sharing knowledge with the community.</p>
-          </div>
-        </div>
-      </header>
-    </div>
+  <div class="bio">
+    <p>I’m a software engineer with a deep focus on backend systems, distributed computing, and infrastructure. I love solving complex problems at scale and building the <em>invisible plumbing</em> that powers modern applications.</p>
+    <p>My journey in software engineering started with a curiosity about how large-scale systems work under the hood. Over the years, I’ve developed expertise in designing resilient, high-throughput services and have contributed to systems that serve millions of users.</p>
+    <p>I believe in writing clean, maintainable code and building systems that are easy to operate. I’m a strong advocate for observability, automation, and developer experience. When I’m not coding, I enjoy writing about technical topics and sharing knowledge with the community.</p>
+  </div>
+  <section class="section" aria-labelledby="focus-title">
+    <h2 id="focus-title" class="section-title">What I do</h2>
+    <ul class="areas">
+      <li class="area"><h3>Backend Engineering</h3><p>Designing and building high-performance APIs, microservices, and data pipelines using Go, Python, and modern cloud-native tooling.</p></li>
+      <li class="area"><h3>Distributed Systems</h3><p>Building fault-tolerant, scalable architectures with event-driven patterns, consensus protocols, and distributed data stores.</p></li>
+      <li class="area"><h3>Infrastructure &amp; DevOps</h3><p>Automating deployments, managing Kubernetes clusters, building CI/CD pipelines, and ensuring reliable production&nbsp;environments.</p></li>
+      <li class="area"><h3>Developer Tools</h3><p>Creating CLI tools, SDKs, and internal platforms that improve developer productivity and streamline engineering workflows.</p></li>
+    </ul>
   </section>
-{{template "focus-section" dict "N" "02" "Dek" false}}
-
   <section class="section" aria-labelledby="tools-title">
-    <div class="wrap">
-      <header class="section-head grid">
-        <p class="section-mark label c-rail"><span class="n">03</span><span class="sl" aria-hidden="true">/</span>Toolbox</p>
-        <div class="c-main"><h2 id="tools-title" class="section-title">Tech stack</h2></div>
-      </header>
-      <div class="grid">
-        <dl class="spec spec--wide c-main">
-          <div><dt class="label">Languages</dt><dd>Go, Python, TypeScript, SQL, Bash</dd></div>
-          <div><dt class="label">Infrastructure</dt><dd>Docker, Kubernetes, AWS, Terraform, Linux</dd></div>
-          <div><dt class="label">Databases &amp; messaging</dt><dd>PostgreSQL, Redis, Kafka, MongoDB, RabbitMQ</dd></div>
-          <div><dt class="label">Protocols &amp; APIs</dt><dd>gRPC, GraphQL, REST, WebSocket</dd></div>
-        </dl>
-      </div>
-    </div>
+    <h2 id="tools-title" class="section-title">Tech stack</h2>
+    <dl class="spec">
+      <div><dt>Languages</dt><dd>Go, Python, TypeScript, SQL, Bash</dd></div>
+      <div><dt>Infrastructure</dt><dd>Docker, Kubernetes, AWS, Terraform, Linux</dd></div>
+      <div><dt>Databases &amp; messaging</dt><dd>PostgreSQL, Redis, Kafka, MongoDB, RabbitMQ</dd></div>
+      <div><dt>Protocols &amp; APIs</dt><dd>gRPC, GraphQL, REST, WebSocket</dd></div>
+    </dl>
   </section>
-
-{{template "contact-band" dict "Config" .Config "N" "04"}}
 {{end}}

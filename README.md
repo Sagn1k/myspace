@@ -6,13 +6,13 @@ A developer portfolio and knowledge blog built with Go. An editorial design (New
 
 ## Features
 
-- Markdown blog engine with frontmatter, typographic punctuation, syntax highlighting, and a numbered table of contents
+- Markdown blog engine with frontmatter, typographic punctuation, syntax highlighting, and a table of contents
 - Full-text search powered by SQLite FTS5, plus a ⌘K / Ctrl K command palette
 - Posts downloadable as PDF (typeset from the markdown) and EPUB 3
 - RSS feed, XML sitemap and JSON-LD structured data
-- Tag-based navigation with in-page topic filtering
+- Tag pages and a topic index
 - Light and dark themes, following the OS until you pick one
-- Reading progress, section tracking and "Keep reading" suggestions by shared tags
+- "Keep reading" suggestions by shared tags
 - Compression and security headers (rate limiting is left to Cloud Run)
 - Graceful shutdown
 
@@ -44,7 +44,7 @@ content/
 templates/           Go HTML templates
 static/
   css/               Custom styles
-  js/                Theme, command palette, contents, filters, copy buttons
+  js/                Theme, command palette, heading self-links, copy buttons
   img/               Favicon and social image
   workwatch/         WorkWatch installer and release tarballs (/workwatch/...)
 ```
@@ -86,7 +86,7 @@ title: "Your Post Title"
 date: 2026-01-15
 description: "A short description for previews and SEO."
 tags: ["go", "backend"]
-pullquote: "Optional: a sentence from the post the home page can feature."
+pullquote: "Optional: a standout sentence from the post (not shown at present)."
 status: "published"
 ---
 
@@ -116,7 +116,7 @@ Edit `content/projects/projects.json`:
 ]
 ```
 
-`id` is the project's anchor (`/projects#project-name`). Without a `summary`, compact lists use the description's first sentence. `figure` names a drawing partial (`"workwatch"` renders `templates/partials/fig-workwatch.html`); leave it empty for none.
+`id` is the project's anchor (`/projects#project-name`). Without a `summary`, compact lists use the description's first sentence. `figure` is currently unused: no page draws a project figure, so leave it empty.
 
 ## Routes
 
@@ -129,7 +129,7 @@ Edit `content/projects/projects.json`:
 | `/blog/:slug` | Blog post |
 | `/blog/:slug/download/pdf` | Download post as PDF |
 | `/blog/:slug/download/epub` | Download post as EPUB |
-| `/tags` | Tag cloud |
+| `/tags` | Topic index |
 | `/tags/:tag` | Posts by tag |
 | `/search?q=term` | Full-text search |
 | `/contact` | Contact page |

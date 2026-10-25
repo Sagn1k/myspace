@@ -1,10 +1,11 @@
 {{/*
-  base.html: the frame every page renders inside (head, header, tab row,
-  footer, command palette, live region). Pages define:
+  base.html: the frame every page renders inside. One column: the site
+  header (the name, four section links, the search and theme buttons), the
+  phone tab row, <main>, a one-line footer, then the command palette and the
+  live region. Pages define:
     {{define "content"}}…{{end}}         required: everything inside <main>
-    {{define "header-extra"}}…{{end}}    optional: markup at the end of the
-                                         sticky header (the post page's
-                                         reading-progress bar)
+    {{define "header-extra"}}…{{end}}    optional markup at the end of the
+                                         site header; no page uses it now
     {{define "main-class"}}…{{end}}      optional: class(es) for <main>
                                          (the error page: "error"); <main>
                                          has no class attribute without one
@@ -51,6 +52,9 @@
   })();
 </script>
 <meta name="author" content="{{.Config.Author}}">
+{{- with .Config.Revision}}
+<meta name="revision" content="{{.}}">
+{{- end}}
 <meta property="og:type" content="{{with .Post}}article{{else}}website{{end}}">
 <meta property="og:site_name" content="{{.Config.Title}}">
 <meta property="og:title" content="{{template "base-title" .}}">
@@ -98,31 +102,17 @@
 <a class="skip-link" href="#main">Skip to content</a>
 
 <header class="site-header">
-  <div class="wrap site-header__inner">
-    <a class="brand" href="/">
-      <span class="brand-mark" aria-hidden="true">SB</span>
-      <span class="brand-text">
-        <span class="brand-name">{{.Config.Author}}</span>
-        <span class="brand-role">{{.Config.Role}}</span>
-        <span class="sr-only">, home</span>
-      </span>
-    </a>
-
+  <div class="wrap">
+    <a class="brand" href="/"{{if eq .CurrentPath "/"}} aria-current="page"{{end}}>{{.Config.Author}}<span class="sr-only">, home</span></a>
     <nav class="nav" aria-label="Primary">
-      <a href="/"{{if eq .Section "home"}} aria-current="{{if eq .CurrentPath "/"}}page{{else}}true{{end}}"{{end}}>Home</a>
       <a href="/blog"{{if eq .Section "blog"}} aria-current="{{if eq .CurrentPath "/blog"}}page{{else}}true{{end}}"{{end}}>Writing</a>
       <a href="/projects"{{if eq .Section "projects"}} aria-current="{{if eq .CurrentPath "/projects"}}page{{else}}true{{end}}"{{end}}>Projects</a>
       <a href="/about"{{if eq .Section "about"}} aria-current="{{if eq .CurrentPath "/about"}}page{{else}}true{{end}}"{{end}}>About</a>
       <a href="/contact"{{if eq .Section "contact"}} aria-current="{{if eq .CurrentPath "/contact"}}page{{else}}true{{end}}"{{end}}>Contact</a>
     </nav>
-
     <div class="tools">
-      <button class="cmdk" type="button" data-open-palette aria-haspopup="dialog" aria-label="Search articles and commands" aria-keyshortcuts="Meta+K Control+K" title="Search">
-        {{template "icon-search"}}
-        <span class="cmdk__text" aria-hidden="true">Search</span>
-        <kbd data-kbd="mod-k" aria-hidden="true">⌘K</kbd>
-      </button>
-      <noscript><a class="cmdk" href="/search" aria-label="Search articles">{{template "icon-search"}}<span class="cmdk__text" aria-hidden="true">Search</span></a></noscript>
+      <button class="icon-btn" type="button" data-open-palette aria-haspopup="dialog" aria-label="Search articles and commands" aria-keyshortcuts="Meta+K Control+K" title="Search">{{template "icon-search"}}</button>
+      <noscript><a class="icon-btn" href="/search" aria-label="Search articles">{{template "icon-search"}}</a></noscript>
       <button class="icon-btn theme-toggle" type="button" aria-label="Switch colour theme">
         <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" stroke-linejoin="round"/></svg>
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke-linecap="round"/></svg>
@@ -133,7 +123,6 @@
 </header>
 <nav class="tabbar" aria-label="Primary">
   <ul class="wrap">
-    <li><a href="/"{{if eq .Section "home"}} aria-current="{{if eq .CurrentPath "/"}}page{{else}}true{{end}}"{{end}}>Home</a></li>
     <li><a href="/blog"{{if eq .Section "blog"}} aria-current="{{if eq .CurrentPath "/blog"}}page{{else}}true{{end}}"{{end}}>Writing</a></li>
     <li><a href="/projects"{{if eq .Section "projects"}} aria-current="{{if eq .CurrentPath "/projects"}}page{{else}}true{{end}}"{{end}}>Projects</a></li>
     <li><a href="/about"{{if eq .Section "about"}} aria-current="{{if eq .CurrentPath "/about"}}page{{else}}true{{end}}"{{end}}>About</a></li>
@@ -147,56 +136,22 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <span class="brand-mark brand-mark--lg" aria-hidden="true">SB</span>
-        <p class="footer-name">{{.Config.Author}}</p>
-        <p class="footer-blurb">Software engineer{{with .Config.YearsExperience}}, {{.}} years in{{end}}. Backend systems, distributed architectures, infrastructure and developer&nbsp;tools.</p>
-      </div>
-      <nav class="footer-col footer-col--site" aria-labelledby="ft-site">
-        <p id="ft-site" class="label">Site</p>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/blog">Writing</a></li>
-          <li><a href="/projects">Projects</a></li>
-          <li><a href="/about">About</a></li>
-          <li><a href="/contact">Contact</a></li>
-          <li><a href="/tags">Topics</a></li>
-        </ul>
-      </nav>
-      <div class="footer-col footer-col--else">
-        <p id="ft-else" class="label">Elsewhere</p>
-        <ul aria-labelledby="ft-else">
-          {{- with .Config.GitHubURL}}
-          <li><a href="{{.}}" rel="me">GitHub</a></li>
-          {{- end}}
-          {{- with .Config.LinkedInURL}}
-          <li><a href="{{.}}" rel="me">LinkedIn</a></li>
-          {{- end}}
-          {{- with .Config.XURL}}
-          <li><a href="{{.}}" rel="me">X</a></li>
-          {{- end}}
-          <li><a href="/rss.xml">RSS feed</a></li>
-          {{- with .Config.Email}}
-          <li><a href="mailto:{{.}}">Email</a></li>
-          {{- end}}
-        </ul>
-      </div>
-      <div class="colophon">
-        <p class="label">Colophon</p>
-        <p>Set in Newsreader and JetBrains Mono. One stylesheet, a little vanilla JavaScript, no client&nbsp;framework.</p>
-        <dl class="title-block meta">
-          <div><dt>Built with</dt><dd>Go · Fiber · html/template</dd></div>
-          {{- with .Config.Revision}}
-          <div><dt>Revision</dt><dd>{{.}}</dd></div>
-          {{- end}}
-        </dl>
-      </div>
-    </div>
-    <div class="footer-bottom meta">
-      <p>© {{currentYear}} {{.Config.Author}}</p>
-      <p><span class="kbd-hint"><kbd data-kbd="mod-k">⌘K</kbd>&ensp;to search</span><a class="meta-link" href="#top">Back to top <span class="arr" aria-hidden="true">↑</span></a></p>
-    </div>
+    <p>© {{currentYear}} {{.Config.Author}}</p>
+    <ul>
+      {{- with .Config.GitHubURL}}
+      <li><a href="{{.}}" rel="me">GitHub</a></li>
+      {{- end}}
+      {{- with .Config.LinkedInURL}}
+      <li><a href="{{.}}" rel="me">LinkedIn</a></li>
+      {{- end}}
+      {{- with .Config.XURL}}
+      <li><a href="{{.}}" rel="me">X</a></li>
+      {{- end}}
+      <li><a href="/rss.xml">RSS</a></li>
+      {{- with .Config.Email}}
+      <li><a href="mailto:{{.}}">Email</a></li>
+      {{- end}}
+    </ul>
   </div>
 </footer>
 
@@ -210,34 +165,33 @@
   <div id="palette-list" class="palette-list" role="listbox" aria-label="Results" data-index="/search-index.json">
     {{- /* Articles and Projects are filled by main.js from /search-index.json on first open; empty groups stay hidden. */}}
     <div role="group" aria-labelledby="pg-articles" data-group="articles">
-      <p id="pg-articles" class="palette-group label" role="presentation">Articles</p>
+      <p id="pg-articles" class="palette-group" role="presentation">Articles</p>
     </div>
     <div role="group" aria-labelledby="pg-pages">
-      <p id="pg-pages" class="palette-group label" role="presentation">Pages</p>
-      <a id="po-p1" class="palette-item" role="option" tabindex="-1" href="/">Home <span class="meta">/</span></a>
-      <a id="po-p2" class="palette-item" role="option" tabindex="-1" href="/blog" data-keywords="blog articles posts index">Writing <span class="meta">/blog</span></a>
-      <a id="po-p3" class="palette-item" role="option" tabindex="-1" href="/projects" data-keywords="work">Projects <span class="meta">/projects</span></a>
-      <a id="po-p4" class="palette-item" role="option" tabindex="-1" href="/about">About <span class="meta">/about</span></a>
-      <a id="po-p5" class="palette-item" role="option" tabindex="-1" href="/contact" data-keywords="email hire">Contact <span class="meta">/contact</span></a>
-      <a id="po-p6" class="palette-item" role="option" tabindex="-1" href="/tags" data-keywords="tags">Topics <span class="meta">/tags</span></a>
+      <p id="pg-pages" class="palette-group" role="presentation">Pages</p>
+      <a id="po-p1" class="palette-item" role="option" tabindex="-1" href="/" data-keywords="/">Home</a>
+      <a id="po-p2" class="palette-item" role="option" tabindex="-1" href="/blog" data-keywords="/blog blog articles posts index">Writing</a>
+      <a id="po-p3" class="palette-item" role="option" tabindex="-1" href="/projects" data-keywords="/projects work">Projects</a>
+      <a id="po-p4" class="palette-item" role="option" tabindex="-1" href="/about" data-keywords="/about">About</a>
+      <a id="po-p5" class="palette-item" role="option" tabindex="-1" href="/contact" data-keywords="/contact email hire">Contact</a>
+      <a id="po-p6" class="palette-item" role="option" tabindex="-1" href="/tags" data-keywords="/tags tags">Topics</a>
     </div>
     <div role="group" aria-labelledby="pg-projects" data-group="projects">
-      <p id="pg-projects" class="palette-group label" role="presentation">Projects</p>
+      <p id="pg-projects" class="palette-group" role="presentation">Projects</p>
     </div>
     <div role="group" aria-labelledby="pg-actions">
-      <p id="pg-actions" class="palette-group label" role="presentation">Actions</p>
-      <button id="po-x1" class="palette-item" role="option" tabindex="-1" type="button" data-action="theme" data-keywords="dark light mode">Switch light / dark theme <span class="meta">Theme</span></button>
+      <p id="pg-actions" class="palette-group" role="presentation">Actions</p>
+      <button id="po-x1" class="palette-item" role="option" tabindex="-1" type="button" data-action="theme" data-keywords="theme dark light mode">Switch light / dark theme</button>
       {{- with .Config.Email}}
-      <button id="po-x2" class="palette-item" role="option" tabindex="-1" type="button" data-action="copy-email" data-email="{{.}}" data-keywords="mail contact">Copy email address <span class="meta">{{with split . "@"}}{{index . 0}}@…{{end}}</span></button>
+      <button id="po-x2" class="palette-item" role="option" tabindex="-1" type="button" data-action="copy-email" data-email="{{.}}" data-keywords="mail contact {{.}}">Copy email address <span class="meta"></span></button>
       {{- end}}
-      <a id="po-x3" class="palette-item" role="option" tabindex="-1" href="/rss.xml" data-keywords="feed subscribe">Subscribe via RSS <span class="meta">/rss.xml</span></a>
+      <a id="po-x3" class="palette-item" role="option" tabindex="-1" href="/rss.xml" data-keywords="/rss.xml feed subscribe">Subscribe via RSS</a>
     </div>
     <div role="group" aria-labelledby="pg-search" data-group="search-all" hidden>
-      <p id="pg-search" class="palette-group label" role="presentation">Full text</p>
-      <a id="po-s1" class="palette-item" role="option" tabindex="-1" href="/search" data-search-all><span>Search all writing for “<span class="q"></span>”</span> <span class="meta">↵</span></a>
+      <p id="pg-search" class="palette-group" role="presentation">Full text</p>
+      <a id="po-s1" class="palette-item" role="option" tabindex="-1" href="/search" data-search-all><span>Search all writing for “<span class="q"></span>”</span></a>
     </div>
   </div>
-  <div class="palette-foot meta" aria-hidden="true"><span>↑ ↓ to move</span><span>↵ to open</span><span>Esc to close</span></div>
 </dialog>
 <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
 <script src="{{asset "js/main.js"}}" defer></script>
