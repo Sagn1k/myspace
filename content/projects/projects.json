@@ -22,7 +22,7 @@
   {
     "id": "pixelQR",
     "title": "pixelQR",
-    "description": "pixelQR: QR Code Generation and Management.",
+    "description": "A QR code service with a single POST endpoint that takes text and returns a base64-encoded PNG in a JSON response.",
     "tech_stack": ["Go", "Makefile", "MySQL", "Docker"],
     "github_link": "https://github.com/Sagn1k/pixelQR",
     "demo_link": "",
@@ -31,7 +31,8 @@
   {
     "id": "rideshare",
     "title": "rideshare",
-    "description": "Ride Sharing Backend Mock for Machine Coding: Simplifin",
+    "description": "An in-memory carpooling API built as a machine-coding exercise, where drivers offer seats on a route and riders book a matching ride, optionally naming a preferred vehicle model.",
+    "summary": "A carpooling API where drivers offer seats and riders book them",
     "tech_stack": ["Go", "gRPC", "Docker"],
     "github_link": "https://github.com/Sagn1k/rideshare",
     "demo_link": "",

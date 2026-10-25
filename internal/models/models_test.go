@@ -35,6 +35,26 @@ func TestShortSummary(t *testing.T) {
 	}
 }
 
+func TestRunInSummary(t *testing.T) {
+	for _, tt := range []struct {
+		p    Project
+		want string
+	}{
+		{Project{Description: "A macOS utility. More."}, "a macOS utility"},
+		{Project{Description: "An in-memory API."}, "an in-memory API"},
+		{Project{Summary: "The task queue"}, "the task queue"},
+		{Project{Title: "pixelQR", Description: "pixelQR: QR code generation."}, "QR code generation"},
+		{Project{Description: "Apple Mail rules."}, "Apple Mail rules"}, // a word, not an article
+		{Project{Description: "A/B testing kit."}, "A/B testing kit"},
+		{Project{Description: "Another tool."}, "Another tool"},
+		{Project{}, ""},
+	} {
+		if got := tt.p.RunInSummary(); got != tt.want {
+			t.Errorf("RunInSummary(%+v) = %q, want %q", tt.p, got, tt.want)
+		}
+	}
+}
+
 func TestBlurb(t *testing.T) {
 	for _, tt := range []struct {
 		title, desc, want string

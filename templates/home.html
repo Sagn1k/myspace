@@ -90,8 +90,8 @@
       <div class="also">
         <p><span class="label">{{if .FeaturedProjects}}Also on the shelf{{else}}On the shelf{{end}}</span>
           {{- $sep := false}}
-          {{- range $i, $p := .FeaturedProjects}}{{if ge $i 3}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{$p.Title}}</b>{{with $p.ShortSummary}}, {{.}}{{end}}{{$sep = true}}{{end}}{{end}}
-          {{- range .OtherProjects}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{.Title}}</b>{{with .ShortSummary}}, {{.}}{{end}}{{$sep = true}}{{end -}}
+          {{- range $i, $p := .FeaturedProjects}}{{if ge $i 3}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{$p.Title}}</b>{{with $p.RunInSummary}}, {{.}}{{end}}{{$sep = true}}{{end}}{{end}}
+          {{- range .OtherProjects}}{{if $sep}}&ensp;·&ensp;{{end}}<b>{{.Title}}</b>{{with .RunInSummary}}, {{.}}{{end}}{{$sep = true}}{{end -}}
         </p>
         <a class="more" href="/projects">See all projects <span class="arr" aria-hidden="true">→</span></a>
       </div>

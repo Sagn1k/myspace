@@ -719,13 +719,15 @@ func TestErrorPageEscapesThePath(t *testing.T) {
 
 // The home page's shelf line names every project past the first three
 // featured ones: a project without copy is just its name (no dangling
-// comma), and a description that repeats the title loses the repeat.
+// comma), a description that repeats the title loses the repeat, and a
+// leading article is lowercased to follow the comma.
 func TestHomeShelf(t *testing.T) {
 	projects := `[
 	{"id": "a", "title": "Alpha", "description": "First project.", "featured": true},
 	{"id": "b", "title": "Beta", "description": "Second project.", "featured": true},
 	{"id": "c", "title": "Gamma", "description": "Third project.", "featured": true},
 	{"id": "qr", "title": "pixelQR", "description": "pixelQR: QR code generation and management.", "featured": true},
+	{"id": "ride", "title": "rideshare", "description": "An in-memory API. More.", "summary": "A carpooling API"},
 	{"id": "solo", "title": "Solo"}
 ]`
 	file := filepath.Join(t.TempDir(), "projects.json")
@@ -741,7 +743,7 @@ func TestHomeShelf(t *testing.T) {
 	also := doc.one(t, ".also", classIs("also"))
 	line := also.one(t, ".also p", tagIs("p")).textContent()
 	// (the label is a block of its own: no space after it in the text)
-	want := "Also on the shelfpixelQR, QR code generation and management · Solo"
+	want := "Also on the shelfpixelQR, QR code generation and management · rideshare, a carpooling API · Solo"
 	if line != want {
 		t.Errorf("shelf line = %q, want %q", line, want)
 	}

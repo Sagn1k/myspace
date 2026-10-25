@@ -45,15 +45,15 @@ install_from_source() {
     # Clone or download source
     if command -v git &>/dev/null; then
         info "Cloning WorkWatch repository..."
-        git clone --depth 1 https://github.com/sagnikb7/workwatch.git "${TEMP_DIR}/workwatch-src" 2>/dev/null || {
+        git clone --depth 1 https://github.com/Sagn1k/workwatch.git "${TEMP_DIR}/workwatch-src" 2>/dev/null || {
             error "Failed to clone repository."
         }
     else
         info "Downloading source archive..."
         if [[ "$DOWNLOADER" == "curl" ]]; then
-            curl -fsSL -o "${TEMP_DIR}/source.tar.gz" "https://github.com/sagnikb7/workwatch/archive/refs/tags/v${VERSION}.tar.gz"
+            curl -fsSL -o "${TEMP_DIR}/source.tar.gz" "https://github.com/Sagn1k/workwatch/archive/refs/tags/v${VERSION}.tar.gz"
         else
-            wget -q -O "${TEMP_DIR}/source.tar.gz" "https://github.com/sagnikb7/workwatch/archive/refs/tags/v${VERSION}.tar.gz"
+            wget -q -O "${TEMP_DIR}/source.tar.gz" "https://github.com/Sagn1k/workwatch/archive/refs/tags/v${VERSION}.tar.gz"
         fi
         tar -xzf "${TEMP_DIR}/source.tar.gz" -C "${TEMP_DIR}"
         mv "${TEMP_DIR}/workwatch-${VERSION}" "${TEMP_DIR}/workwatch-src"

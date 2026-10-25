@@ -67,6 +67,19 @@ func (p Project) ShortSummary() string {
 	return firstSentence(p.Blurb())
 }
 
+// RunInSummary is ShortSummary for a run-in list, where it follows
+// "<Title>, ": a leading article is lowercased ("A macOS utility" reads
+// "a macOS utility"); any other first word keeps its case.
+func (p Project) RunInSummary() string {
+	s := p.ShortSummary()
+	for _, article := range []string{"A ", "An ", "The "} {
+		if strings.HasPrefix(s, article) {
+			return strings.ToLower(article[:1]) + s[1:]
+		}
+	}
+	return s
+}
+
 // Blurb is Description as the pages show it, under the project's title: a
 // description copied from a repository often repeats the name first
 // ("pixelQR: QR code generation"), so a leading "<Title>:" or "<Title> —"
