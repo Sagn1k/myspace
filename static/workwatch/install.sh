@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-VERSION="${WORKWATCH_VERSION:-1.0.0}"
+VERSION="${WORKWATCH_VERSION:-1.1.0}"
 INSTALL_DIR="${WORKWATCH_INSTALL_DIR:-/usr/local/bin}"
 BINARY_NAME="workwatch"
 BASE_URL="https://sagnikbhowmick.com/workwatch/releases"
